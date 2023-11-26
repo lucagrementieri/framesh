@@ -1,13 +1,23 @@
 import logging
+from dataclasses import dataclass
 from typing import List
 
 import fpsample.wrapper
 import numpy as np
+import numpy.typing as npt
 import trimesh
 from scipy.spatial import KDTree
 
 
-def extract_patches(mesh: trimesh.Trimesh, n_patches: int) -> List[trimesh.Trimesh]:
+@dataclass(frozen=True, slots=True)
+class MeshPatch:
+    mesh: trimesh.Trimesh
+    center: npt.NDArray[np.float64]
+    face_indices: npt.NDArray[np.int64]
+    parent_hash: str
+
+
+def extract_patches(mesh: trimesh.Trimesh, n_patches: int) -> List[MeshPatch]:
     n_vertices = mesh.vertices.shape[0]
     if n_patches >= n_vertices:
         logging.warning(
@@ -40,10 +50,13 @@ def extract_patches(mesh: trimesh.Trimesh, n_patches: int) -> List[trimesh.Trime
             np.logical_or(nearby_face_mask, neighbor_face_mask)
         )
         patch_indices.append(face_indices)
-        print(patch_indices[-1].dtype, patch_indices[-1].shape)
-    patches = mesh.submesh(patch_indices, only_watertight=False, append=False)
+    patch_meshes = mesh.submesh(patch_indices, only_watertight=False, append=False)
     patch_center_vertices = mesh.vertices[center_vertex_indices]
-    return patches, patch_center_vertices
+    patches = [
+        MeshPatch(*patch_elements, parent_hash=mesh.identifier_hash)
+        for patch_elements in zip(patch_meshes, patch_center_vertices, patch_indices)
+    ]
+    return patches
 
 
 if __name__ == "__main__":
@@ -57,5 +70,6 @@ if __name__ == "__main__":
     )
     patch_dir = Path(__file__).parents[1] / "patches"
     patch_dir.mkdir(parents=True, exist_ok=True)
-    for i, (patch, _) in enumerate(extract_patches(mesh, 100)):
-        patch.export(patch_dir / f"patch_{i:03d}.ply")
+
+    for i, patch in enumerate(extract_patches(mesh, 100)):
+        patch.mesh.export(patch_dir / f"patch_{i:03d}.ply")
