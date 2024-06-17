@@ -26,14 +26,35 @@ def highlight_vertices(
     mesh: trimesh.Trimesh,
     vertex_indices: npt.NDArray[np.int64],
     color: npt.NDArray[np.float64] = np.array([1.0, 0.0, 0.0]),
-    radius: float = 0.1,
+    point_radius: float = 0.1,
 ) -> None:
     color_mesh = mesh.copy()
     color_mesh.visual.vertex_colors = np.full(3, 0.5)
     meshes = [color_mesh]
     for vertex_index in vertex_indices:
-        vertex_sphere = trimesh.creation.icosphere(radius=radius, vertex_colors=color)
+        vertex_sphere = trimesh.creation.icosphere(radius=point_radius, vertex_colors=color)
         vertex_sphere.apply_translation(mesh.vertices[vertex_index])
         meshes.append(vertex_sphere)
     export_mesh = trimesh.util.concatenate(meshes)
     export_mesh.export(output_path)
+
+
+def export_lrf(
+    output_path: Union[str, Path],
+    center: npt.NDArray[np.float64],
+    lrf: npt.NDArray[np.float64],
+    colors: npt.NDArray[np.float64] = np.eye(3),
+    axis_radius: float = 0.1,
+    axis_length: float = 5.0,
+) -> None:
+    markers = []
+    for axis, color in zip(lrf.T, colors):
+        end_point = center + axis_length * axis
+        axis_cylinder = trimesh.creation.cylinder(
+            radius=axis_radius,
+            segment=np.vstack([center, end_point]),
+            vertex_colors=color,
+        )
+        markers.append(axis_cylinder)
+    markers_mesh = trimesh.util.concatenate(markers)
+    markers_mesh.export(output_path)
