@@ -18,10 +18,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "fpsample ~= 0.3.1",
     "numpy ~= 1.26.2",
     "scipy ~= 1.11.4",
-    "trimesh [easy] ~= 4.0.5",
+    "trimesh [easy] ~= 4.0.8",
 ]
 description = "Local reference frames of mesh patches"
 name = "framesh"
@@ -29,7 +28,7 @@ readme = "README.md"
 requires-python = ">=3.8"
 version = "0.1"
     [project.optional-dependencies]
-    test = ["pytest-cases~=3.6", "pytest~=7.4"]
+    test = ["pytest~=7.4"]
 
 [tool.setuptools.package-data]
 "framesh" = ["py.typed"]
@@ -73,7 +72,3 @@ warn_redundant_casts = true
 warn_return_any = true
 warn_unreachable = true
 warn_unused_ignores = true
-
-    [[tool.mypy.overrides]]
-    ignore_missing_imports = true
-    module = ['pymeshlab', 'pytest_cases']

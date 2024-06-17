@@ -1,5 +1,3 @@
-import functools
-import time
 from typing import Optional
 
 import numpy as np
@@ -7,18 +5,7 @@ import numpy.typing as npt
 import trimesh
 import trimesh.util
 
-
-def timeit(method):
-    @functools.wraps(method)
-    def timed(*args, **kw):
-        ts = time.time()
-        result = method(*args, **kw)
-        te = time.time()
-
-        print("%r  %2.2f ms" % (method.__name__, (te - ts) * 1000))
-        return result
-
-    return timed
+from .util import timeit
 
 
 @timeit
@@ -47,22 +34,11 @@ def rops_local_reference_frame(
     assert eigenvalues[0] <= eigenvalues[1]
     assert eigenvalues[1] <= eigenvalues[2]
     axes = np.fliplr(eigenvectors)
-    hx = np.sum(centers_differences.dot(axes[0]) * area_weights * distance_weights)
+    hx = np.sum(centers_differences.dot(axes[:, 0]) * area_weights * distance_weights)
     if hx < 0:
-        axes[0] *= -1
-    hz = np.sum(centers_differences.dot(axes[2]) * area_weights * distance_weights)
+        axes[:, 0] *= -1
+    hz = np.sum(centers_differences.dot(axes[:, 2]) * area_weights * distance_weights)
     if hz < 0:
-        axes[2] *= -1
-    axes[1] = np.cross(axes[2], axes[0])
+        axes[:, 2] *= -1
+    axes[:, 1] = np.cross(axes[:, 2], axes[:, 0])
     return axes
-
-
-if __name__ == "__main__":
-    from pathlib import Path
-
-    import trimesh
-
-    patch_path = Path(__file__).parents[1] / "patches" / "patch_000.ply"
-    patch_mesh = trimesh.load_mesh(patch_path)
-    centroid = patch_mesh.centroid
-    print(rops_local_reference_frame(patch_mesh, centroid))
