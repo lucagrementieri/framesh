@@ -16,7 +16,7 @@ def shot_lrf(
 ) -> npt.NDArray[np.float64]:
     """
     Reference: Unique signatures of histograms for local surface description. (ECCV 2010)
-    Authors: Tombari, Federico, Samuele Salti, and Luigi Di Stefano.
+    Authors: Tombari Federico, Samuele Salti, and Luigi Di Stefano.
     """
     difference = mesh.vertices - mesh.vertices[vertex_index]
     distances = trimesh.util.row_norm(difference)
