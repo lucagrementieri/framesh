@@ -1,7 +1,7 @@
 import functools
 import time
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -58,3 +58,15 @@ def export_lrf(
         markers.append(axis_cylinder)
     markers_mesh = trimesh.util.concatenate(markers)
     markers_mesh.export(output_path)
+
+
+def get_nearby_indices(
+    mesh: trimesh.Trimesh, vertex_index: int, radius: Optional[float] = None
+) -> npt.NDArray[np.int64]:
+    vertex = mesh.vertices[vertex_index]
+    if radius is None:
+        return np.arange(len(mesh.vertices))
+    neighbors = np.array(
+        mesh.kdtree.query_ball_point(vertex, radius, workers=-1, return_sorted=False)
+    )
+    return neighbors

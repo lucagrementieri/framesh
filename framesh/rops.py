@@ -13,10 +13,7 @@ def rops_lrf(
     radius: Optional[float] = None,
     use_vertex_normal: bool = False,
 ):
-    """
-    Reference: Unique signatures of histograms for local surface description. (ECCV 2010)
-    Authors: Tombari, Federico, Samuele Salti, and Luigi Di Stefano.
-    """
+    """ """
     differences = mesh.vertices - mesh.vertices[vertex_index]
     distances = trimesh.util.row_norm(differences)
     if radius is None:

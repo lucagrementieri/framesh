@@ -8,7 +8,7 @@ from .util import get_nearby_indices, timeit
 
 
 @timeit
-def board_lrf(
+def flare_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
     radius: Optional[float] = None,
@@ -17,8 +17,8 @@ def board_lrf(
     z_radius: Optional[float] = None,
 ) -> npt.NDArray[np.float64]:
     """
-    Reference: On the repeatability of the local reference frame for partial shape matching. (ICCV 2011)
-    Authors: Petrelli Alioscia, and Luigi Di Stefano.
+    Reference: A Repeatable and Efficient Canonical Reference for Surface Matching. (3DIMPVT 2012)
+    Authors: Petrelli Alioscia, and Luigi Di Stefano
     """
     vertex = mesh.vertices[vertex_index]
     if not use_vertex_normal:
@@ -37,7 +37,7 @@ def board_lrf(
     EXCLUDE_RADIUS_COEFFICIENT = 0.85
     exclude_radius = EXCLUDE_RADIUS_COEFFICIENT * (np.max(distances) if radius is None else radius)
     x_neighbors = x_neighbors[distances > exclude_radius]
-    x_point_index = np.argmin(np.abs(np.dot(mesh.vertex_normals[x_neighbors], z_axis)))
+    x_point_index = np.argmax(np.dot(mesh.vertices[x_neighbors] - vertex, z_axis))
     x_vector = mesh.vertices[x_point_index] - vertex
     y_axis = trimesh.transformations.unit_vector(np.cross(z_axis, x_vector))
     x_axis = np.cross(y_axis, z_axis)
