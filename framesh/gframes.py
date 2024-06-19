@@ -3,12 +3,10 @@ from typing import Optional
 import igl
 import numpy as np
 import numpy.typing as npt
-import pymeshlab as pm
 import scipy.sparse
 import scipy.sparse.linalg
 import trimesh
 
-from .curvature import gaussian_mean_curvatures
 from .util import get_nearby_indices, timeit
 
 
@@ -56,33 +54,6 @@ def mean_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray[np.
         unscaled_curvature, 2 * area_mixed, out=np.zeros_like(area_mixed), where=area_mixed > eps
     )
     return curvature
-
-
-def curvature(mesh: trimesh.Trimesh):
-    mesh_set = pm.MeshSet()
-    mesh_set.add_mesh(pm.Mesh(mesh.vertices, mesh.faces))
-    ms_mesh = mesh_set.current_mesh()
-    mesh_set.apply_filter("compute_scalar_by_discrete_curvature_per_vertex", curvaturetype=0)
-    reference_mean_curvature = ms_mesh.vertex_scalar_array()
-
-    _, pymean = gaussian_mean_curvatures(mesh.vertices, mesh.faces, mesh.vertex_normals)
-    igl_mean_curvature = mean_curvature(mesh)
-
-    print(np.argmax(np.abs(igl_mean_curvature - reference_mean_curvature)))
-    print(np.max(np.abs(igl_mean_curvature - reference_mean_curvature)))
-    import matplotlib.cm as cm
-
-    print(cm.hot(0.3))
-    mesh.visual.vertex_colors = cm.hot(
-        np.clip(reference_mean_curvature, a_min=-1.0, a_max=1.0) + 0.5
-    )[:, :3]
-    mesh.export("pattern_reference.ply")
-    mesh.visual.vertex_colors = cm.hot(np.clip(igl_mean_curvature, a_min=-1.0, a_max=1.0) + 0.5)[
-        :, :3
-    ]
-    mesh.export("pattern_igl.ply")
-
-    assert np.allclose(igl_mean_curvature, reference_mean_curvature, atol=1e-5)
 
 
 @timeit
