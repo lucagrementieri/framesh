@@ -1,3 +1,4 @@
+libigl
 numpy < 2
 scipy
 trimesh[easy] >= 4

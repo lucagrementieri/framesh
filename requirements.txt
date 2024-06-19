@@ -36,6 +36,8 @@ jsonschema==4.22.0
     # via trimesh
 jsonschema-specifications==2023.12.1
     # via jsonschema
+libigl==2.5.1
+    # via -r requirements.in
 lxml==5.2.2
     # via trimesh
 mapbox-earcut==1.0.1
@@ -46,6 +48,7 @@ numpy==1.26.4
     # via
     #   -r requirements.in
     #   embreex
+    #   libigl
     #   mapbox-earcut
     #   pycollada
     #   scipy
@@ -72,6 +75,7 @@ rtree==1.2.0
 scipy==1.13.1
     # via
     #   -r requirements.in
+    #   libigl
     #   trimesh
 shapely==2.0.4
     # via trimesh

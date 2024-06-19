@@ -13,7 +13,10 @@ def rops_lrf(
     radius: Optional[float] = None,
     use_vertex_normal: bool = False,
 ):
-    """ """
+    """
+    Reference: A local feature descriptor for 3D rigid objects based on rotational projection statistics. (ICCSPA 2013)
+    Authors: Yulan Guo, Ferdous A. Sohel, Mohammed Bennamoun, Jianwei Wan, and Min Lu.
+    """
     differences = mesh.vertices - mesh.vertices[vertex_index]
     distances = trimesh.util.row_norm(differences)
     if radius is None:

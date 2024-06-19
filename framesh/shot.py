@@ -18,7 +18,6 @@ def shot_lrf(
     Reference: Unique signatures of histograms for local surface description. (ECCV 2010)
     Authors: Tombari Federico, Samuele Salti, and Luigi Di Stefano.
     """
-    # TODO: use query
     vertex = mesh.vertices[vertex_index]
     if radius is None:
         differences = mesh.vertices - vertex
