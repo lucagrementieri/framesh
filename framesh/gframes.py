@@ -16,6 +16,9 @@ def face_half_cotangent(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
 
 
 def cotangent_matrix(mesh: trimesh.Trimesh) -> scipy.sparse.csr_array:
+    """
+    Reference: https://mobile.rodolphe-vaillant.fr/entry/20/compute-harmonic-weights-on-a-triangular-mesh
+    """
     cot_entries = face_half_cotangent(mesh)
     cotangent_coo = scipy.sparse.coo_array(
         (
@@ -30,6 +33,9 @@ def cotangent_matrix(mesh: trimesh.Trimesh) -> scipy.sparse.csr_array:
 
 
 def mass_diagonal(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
+    """
+    Reference: https://mobile.rodolphe-vaillant.fr/entry/20/compute-harmonic-weights-on-a-triangular-mesh
+    """
     cot_entries = face_half_cotangent(mesh)
     squared_edge_lengths = np.square(mesh.edges_unique_length[mesh.faces_unique_edges])
     area_elements = (squared_edge_lengths * cot_entries[:, [2, 0, 1]]) / 4.0
@@ -45,12 +51,15 @@ def mass_diagonal(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
 
 
 def fiedler_squared(mesh: trimesh.Trimesh):
-    laplacian = -cotangent_matrix(mesh.vertices, mesh.faces) / mass_diagonal(mesh)
+    laplacian = -cotangent_matrix(mesh) / mass_diagonal(mesh)
     _, v = scipy.sparse.linalg.eigsh(laplacian, k=2, sigma=0)
     return np.square(v[:, 1])
 
 
 def gaussian_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray[np.float64]:
+    """
+    Reference: https://rodolphe-vaillant.fr/entry/33/curvature-of-a-triangle-mesh-definition-and-computation
+    """
     boundary_edge_indices = trimesh.grouping.group_rows(mesh.edges_sorted, require_count=1)
     boundary_edges = mesh.edges[boundary_edge_indices]
     sorted_boundary_edges = boundary_edges[np.lexsort(np.rot90(boundary_edges))]
@@ -73,6 +82,9 @@ def gaussian_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray
 
 
 def mean_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray[np.float64]:
+    """
+    Reference: https://rodolphe-vaillant.fr/entry/33/curvature-of-a-triangle-mesh-definition-and-computation
+    """
     laplacian = cotangent_matrix(mesh)
     position_laplacian = laplacian.dot(mesh.vertices)
     unscaled_curvature = trimesh.util.row_norm(position_laplacian)
@@ -118,27 +130,24 @@ def gframes_lrf(
             f"Invalid triangle selection method {triangle_selection_method}: "
             "it should be one of 'all' or 'any'"
         )
-    triangles = mesh.faces[triangle_indices]
-    edges21 = mesh.vertices[triangles[:, 1]] - mesh.vertices[triangles[:, 0]]
-    edges31 = mesh.vertices[triangles[:, 2]] - mesh.vertices[triangles[:, 0]]
-    e_coefficients = trimesh.util.row_norm(edges21)
-    g_coefficients = trimesh.util.row_norm(edges31)
-    f_coefficients = np.sum(edges21 * edges31, axis=1)
+    e_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, 0]]
+    g_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, -1]]
+    f_coefficients = e_coefficients * g_coefficients * np.cos(mesh.face_angles[triangle_indices, 0])
     determinants = e_coefficients * g_coefficients - np.square(f_coefficients)
     inverse_matrices = (
         np.array([[g_coefficients, -f_coefficients], [-f_coefficients, e_coefficients]])
         / determinants
     )
     inverse_matrices = np.moveaxis(inverse_matrices, -1, 0)
-    edges = np.stack([edges21, edges31], axis=-1)
+
+    triangles = mesh.faces[triangle_indices]
+    edges = np.swapaxes(mesh.vertices[triangles[:, 1:]] - mesh.vertices[triangles[:, [0]]], 1, 2)
     scalar_field_differences = np.column_stack(
         [
             scalar_field[triangles[:, 1]] - scalar_field[triangles[:, 0]],
             scalar_field[triangles[:, 2]] - scalar_field[triangles[:, 0]],
         ]
     )
-    print(scalar_field)
-    # assert with faces_unique_edges
     triangle_areas = mesh.area_faces[triangle_indices]
     normalized_triangle_areas = triangle_areas / np.sum(triangle_areas)
     x_axis = np.einsum(
