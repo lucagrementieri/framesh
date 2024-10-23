@@ -1,6 +1,5 @@
 from typing import Optional
 
-import igl
 import numpy as np
 import numpy.typing as npt
 import scipy.sparse
@@ -10,10 +9,44 @@ import trimesh
 from .util import get_nearby_indices, timeit
 
 
-def fiedler_squared(mesh):
-    mass_diagonal = igl.massmatrix(mesh.vertices, mesh.faces).diagonal()
-    laplacian = -igl.cotmatrix(mesh.vertices, mesh.faces) / mass_diagonal
-    w, v = scipy.sparse.linalg.eigsh(laplacian, k=2, sigma=0)
+def face_half_cotangent(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
+    half_cotangent = np.cos(mesh.face_angles) / (2 * np.sin(mesh.face_angles))
+    half_cotangent[np.isclose(mesh.face_angles, 0.5 * np.pi, atol=1e-15)] = 0.0
+    return half_cotangent
+
+
+def cotangent_matrix(mesh: trimesh.Trimesh) -> scipy.sparse.csr_array:
+    cot_entries = face_half_cotangent(mesh)
+    cotangent_coo = scipy.sparse.coo_array(
+        (
+            np.roll(cot_entries, 1, axis=1).ravel(),
+            tuple(mesh.edges_unique[mesh.faces_unique_edges.ravel()].T),
+        ),
+        shape=(len(mesh.vertices), len(mesh.vertices)),
+    )
+    cotangent_coo += cotangent_coo.T
+    cotangent_coo.setdiag(-np.sum(cotangent_coo, axis=1))
+    return cotangent_coo.tocsr()
+
+
+def mass_diagonal(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
+    cot_entries = face_half_cotangent(mesh)
+    squared_edge_lengths = np.square(mesh.edges_unique_length[mesh.faces_unique_edges])
+    area_elements = (squared_edge_lengths * cot_entries[:, [2, 0, 1]]) / 4.0
+    vertex_triangle_areas = area_elements[:, [2, 0, 1]] + area_elements
+    obtuse_angle_mask = cot_entries < 0
+    obtuse_triangle_mask = np.any(obtuse_angle_mask, axis=1)
+    vertex_triangle_areas[obtuse_triangle_mask] = np.expand_dims(
+        mesh.area_faces[obtuse_triangle_mask], axis=-1
+    ) / np.where(obtuse_angle_mask[obtuse_triangle_mask], 2.0, 4.0)
+    vertex_areas = np.zeros_like(mesh.vertices[:, 0])
+    np.add.at(vertex_areas, mesh.faces, vertex_triangle_areas)
+    return vertex_areas
+
+
+def fiedler_squared(mesh: trimesh.Trimesh):
+    laplacian = -cotangent_matrix(mesh.vertices, mesh.faces) / mass_diagonal(mesh)
+    _, v = scipy.sparse.linalg.eigsh(laplacian, k=2, sigma=0)
     return np.square(v[:, 1])
 
 
@@ -32,7 +65,7 @@ def gaussian_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray
     defects = np.copy(mesh.vertex_defects)
     defects[boundary_edges[:, 1]] -= angles
 
-    area_mixed = igl.massmatrix(mesh.vertices, mesh.faces).diagonal()
+    area_mixed = mass_diagonal(mesh)
     curvature = np.divide(
         defects, area_mixed, out=np.zeros_like(area_mixed), where=area_mixed > eps
     )
@@ -40,10 +73,10 @@ def gaussian_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray
 
 
 def mean_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray[np.float64]:
-    laplacian = igl.cotmatrix(mesh.vertices, mesh.faces)
+    laplacian = cotangent_matrix(mesh)
     position_laplacian = laplacian.dot(mesh.vertices)
     unscaled_curvature = trimesh.util.row_norm(position_laplacian)
-    area_mixed = igl.massmatrix(mesh.vertices, mesh.faces).diagonal()
+    area_mixed = mass_diagonal(mesh)
     curvature_sign_dot = -np.sum(position_laplacian * mesh.vertex_normals, axis=-1)
     curvature_sign = np.sign(
         curvature_sign_dot,
@@ -61,21 +94,60 @@ def gframes_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
     radius: Optional[float] = None,
-    use_vertex_normal: bool = False,
+    use_vertex_normal: bool = True,
+    *,
+    scalar_field: npt.NDArray[np.float64],
+    triangle_selection_method: str = "all",
 ) -> npt.NDArray[np.float64]:
     """
     Reference: Gframes: Gradient-based local reference frame for 3d shape matching. (CVPR 2019)
     Authors: Simone Melzi, Riccardo Spezialetti, Federico Tombari, Michael M. Bronstein, Luigi Di Stefano, and Emanuele Rodola.
     """
+    if not use_vertex_normal:
+        raise ValueError("GFrames always uses the vertex normal")
     z_axis = mesh.vertex_normals[vertex_index]
 
     x_neighbors = get_nearby_indices(mesh, vertex_index, radius)
-    x_vertices = mesh.vertices[x_neighbors]
-    differences = x_vertices - vertex
-    distances = trimesh.util.row_norm(differences)
-    projection_distances = np.dot(differences, z_axis)
-    scale_factors = np.square((radius - distances) * projection_distances)
-    x_axis = np.dot(x_vertices.T, scale_factors)
+    if triangle_selection_method == "all":
+        triangle_indices = np.flatnonzero(np.all(np.isin(mesh.faces, x_neighbors), axis=1))
+    elif triangle_selection_method == "any":
+        triangle_indices = np.unique(mesh.vertex_faces[x_neighbors])
+        triangle_indices = triangle_indices[1:] if triangle_indices[0] == -1 else triangle_indices
+    else:
+        raise ValueError(
+            f"Invalid triangle selection method {triangle_selection_method}: "
+            "it should be one of 'all' or 'any'"
+        )
+    triangles = mesh.faces[triangle_indices]
+    edges21 = mesh.vertices[triangles[:, 1]] - mesh.vertices[triangles[:, 0]]
+    edges31 = mesh.vertices[triangles[:, 2]] - mesh.vertices[triangles[:, 0]]
+    e_coefficients = trimesh.util.row_norm(edges21)
+    g_coefficients = trimesh.util.row_norm(edges31)
+    f_coefficients = np.sum(edges21 * edges31, axis=1)
+    determinants = e_coefficients * g_coefficients - np.square(f_coefficients)
+    inverse_matrices = (
+        np.array([[g_coefficients, -f_coefficients], [-f_coefficients, e_coefficients]])
+        / determinants
+    )
+    inverse_matrices = np.moveaxis(inverse_matrices, -1, 0)
+    edges = np.stack([edges21, edges31], axis=-1)
+    scalar_field_differences = np.column_stack(
+        [
+            scalar_field[triangles[:, 1]] - scalar_field[triangles[:, 0]],
+            scalar_field[triangles[:, 2]] - scalar_field[triangles[:, 0]],
+        ]
+    )
+    print(scalar_field)
+    # assert with faces_unique_edges
+    triangle_areas = mesh.area_faces[triangle_indices]
+    normalized_triangle_areas = triangle_areas / np.sum(triangle_areas)
+    x_axis = np.einsum(
+        "n,nij,njk,nk->i",
+        normalized_triangle_areas,
+        edges,
+        inverse_matrices,
+        scalar_field_differences,
+    )
     y_axis = trimesh.transformations.unit_vector(np.cross(z_axis, x_axis))
     x_axis = np.cross(y_axis, z_axis)
     axes = np.column_stack((x_axis, y_axis, z_axis))
