@@ -22,7 +22,7 @@ def cotangent_matrix(mesh: trimesh.Trimesh) -> scipy.sparse.csr_array:
     cot_entries = face_half_cotangent(mesh)
     cotangent_coo = scipy.sparse.coo_array(
         (
-            np.roll(cot_entries, 1, axis=1).ravel(),
+            cot_entries[:, [2, 0, 1]].ravel(),
             tuple(mesh.edges_unique[mesh.faces_unique_edges.ravel()].T),
         ),
         shape=(len(mesh.vertices), len(mesh.vertices)),
