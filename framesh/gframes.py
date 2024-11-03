@@ -134,15 +134,19 @@ def gframes_lrf(
     use_vertex_normal: bool = True,
     *,
     scalar_field: npt.NDArray[np.float64],
-    triangle_selection_method: str = "all",
+    triangle_selection_method: str = "any",
 ) -> npt.NDArray[np.float64]:
     """
     Reference: Gframes: Gradient-based local reference frame for 3d shape matching. (CVPR 2019)
     Authors: Simone Melzi, Riccardo Spezialetti, Federico Tombari, Michael M. Bronstein, Luigi Di Stefano, and Emanuele Rodola.
     """
-    if not use_vertex_normal:
-        raise ValueError("GFrames always uses the vertex normal")
-    z_axis = mesh.vertex_normals[vertex_index]
+    if use_vertex_normal:
+        z_axis = mesh.vertex_normals[vertex_index]
+    else:
+        vertex_faces = mesh.vertex_faces[vertex_index]
+        vertex_faces = vertex_faces[vertex_faces != -1]
+        z_axis = np.mean(mesh.face_normals[vertex_faces], axis=0)
+        z_axis /= np.linalg.norm(z_axis)
 
     x_neighbors = get_nearby_indices(mesh, vertex_index, radius)
     if triangle_selection_method == "all":
@@ -155,9 +159,13 @@ def gframes_lrf(
             f"Invalid triangle selection method {triangle_selection_method}: "
             "it should be one of 'all' or 'any'"
         )
-    e_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, 0]]
-    g_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, -1]]
-    f_coefficients = e_coefficients * g_coefficients * np.cos(mesh.face_angles[triangle_indices, 0])
+    sqrt_e_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, 0]]
+    e_coefficients = np.square(sqrt_e_coefficients)
+    sqrt_g_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, -1]]
+    g_coefficients = np.square(sqrt_g_coefficients)
+    f_coefficients = (
+        sqrt_e_coefficients * sqrt_g_coefficients * np.cos(mesh.face_angles[triangle_indices, 0])
+    )
     determinants = e_coefficients * g_coefficients - np.square(f_coefficients)
     inverse_matrices = (
         np.array([[g_coefficients, -f_coefficients], [-f_coefficients, e_coefficients]])
