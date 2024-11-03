@@ -32,7 +32,30 @@ def cotangent_matrix(mesh: trimesh.Trimesh) -> scipy.sparse.csr_array:
     return cotangent_coo.tocsr()
 
 
-def mass_diagonal(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
+def mass_diagonal(mesh: trimesh.Trimesh, method: str = "mixed_voronoi") -> npt.NDArray[np.float64]:
+    if method == "barycentric":
+        return mass_diagonal_barycentric(mesh)
+    elif method == "mixed_voronoi":
+        return mass_diagonal_mixed_voronoi(mesh)
+    else:
+        raise ValueError(
+            f"Unknown mass method {method}, it should be 'barycentric' or 'mixed_voronoi'"
+        )
+
+
+def mass_diagonal_barycentric(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
+    """
+    Reference: https://mobile.rodolphe-vaillant.fr/entry/20/compute-harmonic-weights-on-a-triangular-mesh
+    """
+    vertex_areas = np.where(
+        mesh.vertex_faces == -1,
+        np.zeros_like(mesh.vertex_faces, dtype=np.float64),
+        mesh.area_faces[mesh.vertex_faces],
+    )
+    return np.sum(vertex_areas, axis=1) / 3.0
+
+
+def mass_diagonal_mixed_voronoi(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
     """
     Reference: https://mobile.rodolphe-vaillant.fr/entry/20/compute-harmonic-weights-on-a-triangular-mesh
     """
@@ -50,10 +73,12 @@ def mass_diagonal(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
     return vertex_areas
 
 
-def fiedler_squared(mesh: trimesh.Trimesh):
-    laplacian = -cotangent_matrix(mesh) / mass_diagonal(mesh)
-    _, v = scipy.sparse.linalg.eigsh(laplacian, k=2, sigma=0)
-    return np.square(v[:, 1])
+def fiedler_squared(mesh: trimesh.Trimesh, mass_method: str = "mixed_voronoi"):
+    sparse_mass = scipy.sparse.diags(mass_diagonal(mesh, mass_method), format="csr")
+    _, v = scipy.sparse.linalg.eigsh(-cotangent_matrix(mesh), M=sparse_mass, k=2, sigma=0)
+    field = np.square(v[:, 1])
+    scaled_field = (field - np.min(field)) / (np.max(field) - np.min(field))
+    return scaled_field
 
 
 def gaussian_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray[np.float64]:

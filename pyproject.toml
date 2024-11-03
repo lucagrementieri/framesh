@@ -49,6 +49,8 @@ exclude = '''
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
 select = ["F", "E", "W", "I001"]
 
 [tool.mypy]
