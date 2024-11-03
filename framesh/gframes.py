@@ -131,7 +131,7 @@ def gframes_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
     radius: Optional[float] = None,
-    use_vertex_normal: bool = True,
+    use_vertex_normal: bool = False,
     *,
     scalar_field: npt.NDArray[np.float64],
     triangle_selection_method: str = "any",
