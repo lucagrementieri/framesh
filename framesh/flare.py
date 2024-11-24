@@ -2,10 +2,9 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import get_nearby_indices, timeit
+from .util import get_nearby_indices
 
 
-@timeit
 def flare_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,

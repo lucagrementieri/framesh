@@ -4,7 +4,7 @@ import scipy.sparse
 import scipy.sparse.linalg
 import trimesh
 
-from .util import get_nearby_indices, timeit
+from .util import get_nearby_indices
 
 
 def face_half_cotangent(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
@@ -75,9 +75,7 @@ def mass_diagonal(mesh: trimesh.Trimesh, method: str = "mixed_voronoi") -> npt.N
         return mass_diagonal_barycentric(mesh)
     if method == "mixed_voronoi":
         return mass_diagonal_mixed_voronoi(mesh)
-    raise ValueError(
-        f"Unknown mass method {method}, it should be 'barycentric' or 'mixed_voronoi'"
-    )
+    raise ValueError(f"Unknown mass method {method}, it should be 'barycentric' or 'mixed_voronoi'")
 
 
 def mass_diagonal_barycentric(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
@@ -251,7 +249,6 @@ def mean_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray[np.
     return curvature
 
 
-@timeit
 def gframes_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,

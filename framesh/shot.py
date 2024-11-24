@@ -2,10 +2,9 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import get_nearby_indices, timeit
+from .util import get_nearby_indices
 
 
-@timeit
 def shot_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
@@ -55,12 +54,10 @@ def shot_lrf(
         neighbors = get_nearby_indices(mesh, vertex_index, radius)
         differences = mesh.vertices[neighbors] - vertex
         distances = trimesh.util.row_norm(differences)
-    assert np.all(distances <= radius)
     scale_factors = radius - distances
     scale_factors /= scale_factors.sum()
     weighted_covariance = np.einsum("i,ij,ik->jk", scale_factors, differences, differences)
-    eigenvalues, eigenvectors = np.linalg.eigh(weighted_covariance)
-    assert eigenvalues[0] <= eigenvalues[1] <= eigenvalues[2]
+    _, eigenvectors = np.linalg.eigh(weighted_covariance)
     axes = np.fliplr(eigenvectors)
     if np.mean(np.dot(differences, axes[:, 0]) >= 0) < 0.5:
         axes[:, 0] *= -1
@@ -76,7 +73,6 @@ def shot_lrf(
     return axes
 
 
-@timeit
 def shot_frames(
     mesh: trimesh.Trimesh,
     vertex_indices: npt.NDArray[np.int_],

@@ -2,10 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import timeit
 
-
-@timeit
 def rops_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
@@ -60,8 +57,7 @@ def rops_lrf(
         face_scatter * np.expand_dims(area_weights * distance_weights, axis=(1, 2)),
         axis=0,
     )
-    eigenvalues, eigenvectors = np.linalg.eigh(mesh_scatter)
-    assert eigenvalues[0] <= eigenvalues[1] <= eigenvalues[2]
+    _, eigenvectors = np.linalg.eigh(mesh_scatter)
     axes = np.fliplr(eigenvectors)
     hx = np.sum(centers_differences.dot(axes[:, 0]) * area_weights * distance_weights)
     if hx < 0:
