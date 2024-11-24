@@ -30,8 +30,9 @@ def shot_lrf(
             z-axis of the LRF. If False, computes the z-axis from covariance analysis.
 
     Returns:
-        A 3x3 matrix where each column represents an axis of the LRF.
-        The columns are [x-axis, y-axis, z-axis] forming a right-handed coordinate system.
+        Axes of the LRF stored in columns [x-axis, y-axis, z-axis] forming a right-handed
+        coordinate system.
+        Shape: (3, 3)
 
     Note:
         The implementation follows these steps:
@@ -71,6 +72,85 @@ def shot_lrf(
     else:
         if np.dot(mesh.vertex_normals[vertex_index], axes[:, 2]) < 0.0:
             axes[:, 2] *= -1
-        if np.dot(np.cross(axes[:, 2], axes[:, 0]), axes[1]) < 0:
+        if np.linalg.det(axes) < 0:
             axes[:, 1] *= -1
+    return axes
+
+
+@timeit
+def shot_frames(
+    mesh: trimesh.Trimesh,
+    vertex_indices: npt.NDArray[np.int_],
+    radius: Optional[float] = None,
+    use_vertex_normal: bool = False,
+) -> npt.NDArray[np.float64]:
+    """Computes Local Reference Frames (LRFs) for multiple vertices using the SHOT method.
+
+    Vectorized version of shot_lrf that computes LRFs for multiple vertices simultaneously.
+
+    Args:
+        mesh: The input 3D mesh.
+        vertex_indices: Array of vertex indices for which to compute LRFs.
+            Shape: (L,) where L is the number of vertices with LRFs.
+        radius: Support radius for the LRF computation. If None,
+            uses the maximum distance from each vertex to any other vertex.
+        use_vertex_normal: If True, uses vertex normals directly as the
+            z-axes of the LRFs. If False, computes z-axes from covariance analysis.
+
+    Returns:
+        Batch of axes of the LRFs stored in columns [x-axis, y-axis, z-axis] forming
+        right-handed coordinate systems.
+        Shape: (L, 3, 3)
+    """
+    vertex_indices = np.atleast_1d(vertex_indices)
+    frame_vertices = mesh.vertices[vertex_indices]
+    n_vertices = len(vertex_indices)
+
+    if radius is None:
+        differences = mesh.vertices - np.expand_dims(frame_vertices, axis=1)  # (L, V, 3)
+        distances = np.linalg.norm(differences, axis=-1)
+        scale_factors = np.max(distances, axis=-1, keepdims=True) - distances
+        scale_factors /= np.sum(scale_factors, axis=-1, keepdims=True)
+        weighted_covariance = np.einsum("lv,lvi,lvj->lij", scale_factors, differences, differences)
+    else:
+        neighbors = get_nearby_indices(mesh, vertex_indices, radius)
+        neighbors_counts = np.array([len(n) for n in neighbors])
+        flat_neighbors = np.concatenate(neighbors)
+        frame_indices = np.repeat(np.arange(n_vertices), neighbors_counts)
+        differences = mesh.vertices[flat_neighbors] - frame_vertices[frame_indices]  # (M, 3)
+        distances = trimesh.util.row_norm(differences)
+        scale_factors = radius - distances
+        reduce_indices = np.insert(np.cumsum(neighbors_counts)[:-1], 0, 0.0)
+        scale_factor_normalizer = np.add.reduceat(scale_factors, reduce_indices)
+        scale_factors /= scale_factor_normalizer[frame_indices]
+        covariances = np.einsum("m,mi,mj->mij", scale_factors, differences, differences)
+        weighted_covariance = np.add.reduceat(covariances, reduce_indices)
+
+    # Compute eigendecomposition for all vertices
+    _, eigenvectors = np.linalg.eigh(weighted_covariance)
+    axes = np.flip(eigenvectors, axis=-1)
+
+    # Ensure consistent x-axis orientation
+    if radius is None:
+        x_projections = np.sum(differences * axes[:, None, :, 0], axis=-1)
+        x_sign = np.mean(x_projections >= 0, axis=1) < 0.5
+        axes[x_sign, :, 0] *= -1
+    else:
+        x_projections = np.sum(differences * axes[frame_indices, :, 0], axis=-1)
+        x_sign = np.add.reduceat(x_projections >= 0, reduce_indices) < (0.5 * neighbors_counts)
+        axes[x_sign, :, 0] *= -1
+
+    if use_vertex_normal:
+        axes[..., 2] = mesh.vertex_normals[vertex_indices]
+        axes[..., 1] = np.cross(axes[..., 2], axes[..., 0])
+        axes[..., 0] = np.cross(axes[..., 1], axes[..., 2])
+    else:
+        # Ensure consistent z-axis orientation with vertex normals
+        z_dots = np.sum(mesh.vertex_normals[vertex_indices] * axes[..., 2], axis=-1)
+        z_sign = z_dots < 0
+        axes[z_sign, :, 2] *= -1
+
+        # Ensure right-handed coordinate system
+        y_sign = np.linalg.det(axes) < 0
+        axes[y_sign, :, 1] *= -1
     return axes

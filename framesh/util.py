@@ -93,22 +93,35 @@ def export_lrf(
 
 
 def get_nearby_indices(
-    mesh: trimesh.Trimesh, vertex_index: int, radius: Optional[float] = None
-) -> npt.NDArray[np.int64]:
-    """Gets indices of vertices within a specified radius of a target vertex.
+    mesh: trimesh.Trimesh,
+    vertex_indices: Union[int, npt.NDArray[np.int_]],
+    radius: Optional[Union[float, npt.NDArray[np.float64]]] = None,
+) -> Union[npt.NDArray[np.int64], list[npt.NDArray[np.int64]]]:
+    """Gets indices of vertices within a specified radius of target vertices.
 
     Args:
         mesh: The input mesh.
-        vertex_index: Index of the target vertex.
-        radius: Maximum distance from target vertex. If None, returns all vertices.
+        vertex_index: Index or array of indices of target vertices.
+        radius: Maximum distance(s) from target vertices. If None, returns all vertices.
+            Can be a single float or an array matching vertex_index length.
 
     Returns:
-        Array of vertex indices within the specified radius of the target vertex.
+        If vertex_index is an int: Array of vertex indices within radius of the target vertex.
+        If vertex_index is an array: List of arrays containing vertex indices within radius
+            of each target vertex.
     """
-    vertex = mesh.vertices[vertex_index]
+    center_vertices = mesh.vertices[vertex_indices]
     if radius is None:
-        return np.arange(len(mesh.vertices))
-    neighbors = np.array(
-        mesh.kdtree.query_ball_point(vertex, radius, workers=-1, return_sorted=False)
+        if center_vertices.ndim == 1:
+            return np.arange(len(mesh.vertices))
+        else:
+            return [np.arange(len(mesh.vertices))] * len(center_vertices)
+    neighbors = mesh.kdtree.query_ball_point(
+        center_vertices, radius, workers=-1, return_sorted=False
     )
-    return neighbors
+    np_neighbors: Union[npt.NDArray[np.int64], list[npt.NDArray[np.int64]]]
+    if center_vertices.ndim == 1:
+        np_neighbors = np.array(neighbors)
+    else:
+        np_neighbors = [np.array(n) for n in neighbors]
+    return np_neighbors
