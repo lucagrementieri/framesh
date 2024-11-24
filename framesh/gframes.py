@@ -20,7 +20,9 @@ def face_half_cotangent(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
         Values are set to 0 for angles very close to 90 degrees.
         Shape: (F, 3) where F is the number of faces in the mesh.
     """
-    half_cotangent = np.cos(mesh.face_angles) / (2 * np.sin(mesh.face_angles))
+    half_cotangent: npt.NDArray[np.float64] = np.cos(mesh.face_angles) / (
+        2 * np.sin(mesh.face_angles)
+    )
     half_cotangent[np.isclose(mesh.face_angles, 0.5 * np.pi, atol=1e-15)] = 0.0
     return half_cotangent
 
@@ -52,8 +54,9 @@ def cotangent_matrix(mesh: trimesh.Trimesh) -> scipy.sparse.csr_array:
         shape=(len(mesh.vertices), len(mesh.vertices)),
     )
     cotangent_coo += cotangent_coo.T
-    cotangent_coo.setdiag(-np.sum(cotangent_coo, axis=1))
-    return cotangent_coo.tocsr()
+    cotangent_coo.setdiag(-cotangent_coo.sum(axis=1))
+    cotangent_csr: scipy.sparse.csr_array = cotangent_coo.tocsr()
+    return cotangent_csr
 
 
 def mass_diagonal(mesh: trimesh.Trimesh, method: str = "mixed_voronoi") -> npt.NDArray[np.float64]:
@@ -102,7 +105,8 @@ def mass_diagonal_barycentric(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
         np.zeros_like(mesh.vertex_faces, dtype=np.float64),
         mesh.area_faces[mesh.vertex_faces],
     )
-    return np.sum(vertex_areas, axis=1) / 3.0
+    areas: npt.NDArray[np.float64] = np.sum(vertex_areas, axis=1)
+    return areas / 3.0
 
 
 def mass_diagonal_mixed_voronoi(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
@@ -131,7 +135,7 @@ def mass_diagonal_mixed_voronoi(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64
     vertex_triangle_areas[obtuse_triangle_mask] = np.expand_dims(
         mesh.area_faces[obtuse_triangle_mask], axis=-1
     ) / np.where(obtuse_angle_mask[obtuse_triangle_mask], 2.0, 4.0)
-    vertex_areas = np.zeros_like(mesh.vertices[:, 0])
+    vertex_areas: npt.NDArray[np.float64] = np.zeros_like(mesh.vertices[:, 0])
     np.add.at(vertex_areas, mesh.faces, vertex_triangle_areas)
     return vertex_areas
 
@@ -198,7 +202,7 @@ def gaussian_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray
     defects[boundary_edges[:, 1]] -= angles
 
     area_mixed = mass_diagonal(mesh)
-    curvature = np.divide(
+    curvature: npt.NDArray[np.float64] = np.divide(
         defects, area_mixed, out=np.zeros_like(area_mixed), where=area_mixed > eps
     )
     return curvature
@@ -240,7 +244,7 @@ def mean_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray[np.
         out=np.zeros_like(curvature_sign_dot),
         where=np.abs(curvature_sign_dot) > eps,
     )
-    curvature = curvature_sign * np.divide(
+    curvature: npt.NDArray[np.float64] = curvature_sign * np.divide(
         unscaled_curvature, 2 * area_mixed, out=np.zeros_like(area_mixed), where=area_mixed > eps
     )
     return curvature
@@ -345,5 +349,5 @@ def gframes_lrf(
     )
     y_axis = trimesh.transformations.unit_vector(np.cross(z_axis, x_axis))
     x_axis = np.cross(y_axis, z_axis)
-    axes = np.column_stack((x_axis, y_axis, z_axis))
+    axes: npt.NDArray[np.float64] = np.column_stack((x_axis, y_axis, z_axis))
     return axes

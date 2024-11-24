@@ -30,5 +30,5 @@ def half_sphere() -> trimesh.Trimesh:
 @pytest.fixture(scope="session")
 def half_sphere_top() -> Tuple[str, trimesh.Trimesh, int]:
     mesh = half_sphere()
-    vertex_index = np.argmax(mesh.vertices[:, 2])
+    vertex_index = int(np.argmax(mesh.vertices[:, 2]))
     return "half_sphere", mesh, vertex_index

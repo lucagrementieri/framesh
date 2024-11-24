@@ -46,7 +46,8 @@ def toldi_lrf(
     """
     vertex = mesh.vertices[vertex_index]
     if not use_vertex_normal:
-        z_neighbors = get_nearby_indices(mesh, vertex_index, radius / 3.0)
+        z_radius = radius / 3.0 if radius is not None else None
+        z_neighbors = get_nearby_indices(mesh, vertex_index, z_radius)
         z_vertices = mesh.vertices[z_neighbors]
         z_centroid = np.mean(z_vertices, axis=0)
         differences = z_vertices - z_centroid

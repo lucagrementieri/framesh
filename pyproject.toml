@@ -1,10 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
+name = "framesh"
+version = "0.1"
+description = "Local reference frame algorithms for meshes"
+readme = "README.md"
+requires-python = ">=3.10"
 authors = [
     { name = "Luca Grementieri", email = "luca.grementieri@ens-paris-saclay.fr" }
 ]
+keywords = [
+    "3d",
+    "mesh", 
+    "geometry",
+    "local-reference-frame",
+    "computer-graphics", 
+    "computational-geometry",
+    "point-cloud"
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "Intended Audience :: Science/Research",
+    "Intended Audience :: Science/Research", 
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
@@ -15,19 +33,14 @@ classifiers = [
     "Topic :: Multimedia :: Graphics :: 3D Modeling",
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
-description = "Local reference frame algorithms for meshes"
-name = "framesh"
-readme = "README.md"
-requires-python = ">=3.10"
-version = "0.1"
 dynamic = ["dependencies"]
 
 [project.optional-dependencies]
-test = ["pip-tools~=7.4", "pytest~=8.3", "ruff~=0.8"]
+test = ["mypy~=1.13", "pip-tools~=7.4", "pytest~=8.3", "ruff~=0.8", "scipy-stubs~=1.14"]
 
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+[project.urls]
+Repository = "https://github.com/lucagrementieri/framesh"
+Issues = "https://github.com/lucagrementieri/framesh/issues"
 
 [tool.setuptools]
 packages = ["framesh"]
@@ -38,31 +51,11 @@ packages = ["framesh"]
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.in"] }
 
-[tool.black]
-exclude = '''
-/(
-    \.git
-  | \.mypy_cache
-  | \.tox
-  | \.vscode
-  | venv
-  | build
-  | dist
-)/
-'''
-
-[tool.ruff]
-line-length = 100
-
-[tool.ruff.lint]
-select = ["F", "E", "W", "I001"]
-
 [tool.mypy]
 check_untyped_defs = true
 exclude = [
     '\.git',
-    '\.mypy_cache',
-    '\.tox',
+    '\.*_cache',
     '\.vscode',
     '_skbuild',
     'build',
@@ -78,3 +71,9 @@ warn_redundant_casts = true
 warn_return_any = true
 warn_unreachable = true
 warn_unused_ignores = true
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "I001"]
