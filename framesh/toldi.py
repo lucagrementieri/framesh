@@ -1,4 +1,3 @@
-
 import numpy as np
 import numpy.typing as npt
 import trimesh
@@ -11,6 +10,7 @@ def toldi_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
     radius: float | None = None,
+    *,
     use_vertex_normal: bool = False,
 ) -> npt.NDArray[np.float64]:
     """Computes the Local Reference Frame (LRF) for a vertex using the TOLDI method.

@@ -19,7 +19,7 @@ def timeit(method: Callable) -> Callable:
     """
 
     @functools.wraps(method)
-    def timed(*args, **kw):
+    def timed(*args, **kw):  # noqa: ANN002, ANN003, ANN202
         ts = time.time()
         result = method(*args, **kw)
         te = time.time()

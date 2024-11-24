@@ -76,4 +76,4 @@ warn_unused_ignores = true
 line-length = 100
 
 [tool.ruff.lint]
-select = ["F", "E", "W", "I", "UP", "YTT"]
+select = ["F", "E", "W", "I", "UP", "YTT", "ANN", "FBT"]

@@ -1,4 +1,3 @@
-
 import numpy as np
 import numpy.typing as npt
 import trimesh
@@ -11,6 +10,7 @@ def shot_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
     radius: float | None = None,
+    *,
     use_vertex_normal: bool = False,
 ) -> npt.NDArray[np.float64]:
     """Computes a Local Reference Frame (LRF) for a vertex using the SHOT method.
@@ -81,6 +81,7 @@ def shot_frames(
     mesh: trimesh.Trimesh,
     vertex_indices: npt.NDArray[np.int_],
     radius: float | None = None,
+    *,
     use_vertex_normal: bool = False,
 ) -> npt.NDArray[np.float64]:
     """Computes Local Reference Frames (LRFs) for multiple vertices using the SHOT method.
