@@ -288,7 +288,8 @@ def gframes_lrf(
         5. Uses gradient direction for x-axis and completes coordinate system
 
     Reference:
-        Melzi, S., Spezialetti, R., Tombari, F., Bronstein, M. M., Di Stefano, L., & Rodola, E. (2019).
+        Melzi, S., Spezialetti, R., Tombari, F., Bronstein, M. M., Di Stefano, L., & Rodola, E.
+        (2019).
         "GFrames: Gradient-based local reference frame for 3D shape matching."
         IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
     """

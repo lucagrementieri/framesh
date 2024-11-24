@@ -42,7 +42,8 @@ def rops_lrf(
     Reference:
         Guo, Y., Sohel, F. A., Bennamoun, M., Wan, J., & Lu, M. (2013).
         "A local feature descriptor for 3D rigid objects based on rotational projection statistics."
-        International Conference on Communications, Signal Processing, and their Applications (ICCSPA).
+        International Conference on Communications, Signal Processing, and their Applications
+        (ICCSPA).
     """
     differences = mesh.vertices - mesh.vertices[vertex_index]
     distances = trimesh.util.row_norm(differences)
