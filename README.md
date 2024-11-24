@@ -9,6 +9,30 @@ computation methods for 3D meshes. LRFs are essential for creating rotation-inva
 descriptors and establishing repeatable coordinate systems on 3D surfaces. The library has minimal 
 dependencies, requiring only NumPy for computation and Trimesh for mesh handling.
 
+## Installation
+
+Framesh is available on PyPI and can be installed using pip:
+
+```bash
+python -m pip install framesh
+``` 
+
+## Usage
+
+Each LRF method follows a consistent API:
+
+```python
+import trimesh
+from framesh import shot_lrf
+
+# Load your mesh
+mesh = trimesh.load('your_mesh.obj')
+# Compute LRF for vertex index 0 with default parameters
+lrf = shot_lrf(mesh, vertex_index=0)
+# The result is a 3x3 matrix where columns are [x-axis, y-axis, z-axis]
+print(lrf)
+```
+
 ## Implemented Methods
 
 - **SHOT**
@@ -47,22 +71,6 @@ dependencies, requiring only NumPy for computation and Trimesh for mesh handling
     defined on the mesh surface to determine axis directions.
   - *Reference:* Melzi et al., "GFrames: Gradient-based local reference frame for 3D shape 
     matching." CVPR 2019.
-
-## Usage
-
-Each LRF method follows a consistent API:
-
-```python
-import trimesh
-from framesh import shot_lrf
-
-# Load your mesh
-mesh = trimesh.load('your_mesh.obj')
-# Compute LRF for vertex index 0 with default parameters
-lrf = shot_lrf(mesh, vertex_index=0)
-# The result is a 3x3 matrix where columns are [x-axis, y-axis, z-axis]
-print(lrf)
-```
 
 ## Citation
 
