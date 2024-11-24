@@ -7,6 +7,8 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
+DEFAULT_COLORS = np.eye(3)
+
 
 def timeit(method: Callable) -> Callable:
     """Decorator that prints the execution time of a method.
@@ -34,7 +36,7 @@ def highlight_vertices(
     output_path: str | Path,
     mesh: trimesh.Trimesh,
     vertex_indices: npt.NDArray[np.int64],
-    color: npt.NDArray[np.float64] = np.array([1.0, 0.0, 0.0]),
+    color: npt.NDArray[np.float64] = DEFAULT_COLORS[0],
     point_radius: float = 0.1,
 ) -> None:
     """Exports a mesh with highlighted vertices.
@@ -63,7 +65,7 @@ def export_lrf(
     output_path: str | Path,
     center: npt.NDArray[np.float64],
     lrf: npt.NDArray[np.float64],
-    colors: npt.NDArray[np.float64] = np.eye(3),
+    colors: npt.NDArray[np.float64] = DEFAULT_COLORS,
     axis_radius: float = 0.1,
     axis_length: float = 5.0,
 ) -> None:
@@ -80,7 +82,7 @@ def export_lrf(
         axis_length: Length of the cylinder representing each axis.
     """
     markers = []
-    for axis, color in zip(lrf.T, colors):
+    for axis, color in zip(lrf.T, colors, strict=False):
         end_point = center + axis_length * axis
         axis_cylinder = trimesh.creation.cylinder(
             radius=axis_radius,
