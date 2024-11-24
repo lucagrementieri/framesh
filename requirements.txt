@@ -16,11 +16,11 @@ certifi==2024.8.30
     #   httpx
 chardet==5.2.0
     # via trimesh
-colorlog==6.8.2
+colorlog==6.9.0
     # via trimesh
 h11==0.14.0
     # via httpcore
-httpcore==1.0.6
+httpcore==1.0.7
     # via httpx
 httpx==0.27.2
     # via trimesh
@@ -34,13 +34,13 @@ jsonschema-specifications==2024.10.1
     # via jsonschema
 lxml==5.3.0
     # via trimesh
-manifold3d==2.5.1
+manifold3d==3.0.0
     # via trimesh
 mapbox-earcut==1.0.2
     # via trimesh
 networkx==3.4.2
     # via trimesh
-numpy==2.1.2
+numpy==2.1.3
     # via
     #   -r requirements.in
     #   manifold3d
@@ -61,7 +61,7 @@ referencing==0.35.1
     # via
     #   jsonschema
     #   jsonschema-specifications
-rpds-py==0.20.0
+rpds-py==0.21.0
     # via
     #   jsonschema
     #   referencing
@@ -81,7 +81,7 @@ sniffio==1.3.1
     #   httpx
 svg-path==6.3
     # via trimesh
-trimesh[easy]==4.5.1
+trimesh[easy]==4.5.2
     # via -r requirements.in
 vhacdx==0.0.8.post1
     # via trimesh
