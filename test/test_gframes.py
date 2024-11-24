@@ -1,14 +1,11 @@
-from typing import Tuple
-
 import numpy as np
 import pytest
-import trimesh
 
 import framesh.gframes
 
 
 @pytest.mark.parametrize("lrf_input", ["half_cylinder_right", "half_sphere_top"])
-def test_gframes_lrf(lrf_input: Tuple[str, trimesh.Trimesh, int], request) -> None:
+def test_gframes_lrf(lrf_input: str, request: pytest.FixtureRequest) -> None:
     name, mesh, vertex_index = request.getfixturevalue(lrf_input)
     for field_name in ("mean_curvature", "gaussian_curvature", "fiedler_squared"):
         field = getattr(framesh.gframes, field_name)(mesh)

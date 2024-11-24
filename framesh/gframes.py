@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 import numpy.typing as npt
 import scipy.sparse
@@ -140,7 +138,9 @@ def mass_diagonal_mixed_voronoi(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64
     return vertex_areas
 
 
-def fiedler_squared(mesh: trimesh.Trimesh, mass_method: str = "mixed_voronoi"):
+def fiedler_squared(
+    mesh: trimesh.Trimesh, mass_method: str = "mixed_voronoi"
+) -> npt.NDArray[np.float64]:
     """Computes squared and normalized Fiedler vector of mesh Laplacian.
 
     The Fiedler vector is the eigenvector corresponding to the second smallest eigenvalue
@@ -158,7 +158,9 @@ def fiedler_squared(mesh: trimesh.Trimesh, mass_method: str = "mixed_voronoi"):
     sparse_mass = scipy.sparse.diags(mass_diagonal(mesh, mass_method), format="csr")
     _, v = scipy.sparse.linalg.eigsh(-cotangent_matrix(mesh), M=sparse_mass, k=2, sigma=0)
     field = np.square(v[:, 1])
-    scaled_field = (field - np.min(field)) / (np.max(field) - np.min(field))
+    scaled_field: npt.NDArray[np.float64] = (field - np.min(field)) / (
+        np.max(field) - np.min(field)
+    )
     return scaled_field
 
 
@@ -254,7 +256,7 @@ def mean_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray[np.
 def gframes_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
-    radius: Optional[float] = None,
+    radius: float | None = None,
     use_vertex_normal: bool = False,
     *,
     scalar_field: npt.NDArray[np.float64],

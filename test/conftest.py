@@ -1,4 +1,3 @@
-from typing import Tuple
 
 import numpy as np
 import pytest
@@ -14,7 +13,7 @@ def half_cylinder() -> trimesh.Trimesh:
 
 
 @pytest.fixture(scope="session")
-def half_cylinder_right() -> Tuple[str, trimesh.Trimesh, int]:
+def half_cylinder_right() -> tuple[str, trimesh.Trimesh, int]:
     mesh = half_cylinder()
     _, vertex_index = mesh.kdtree.query(np.array([5.0, 0.0, 0.0]))
     return "half_cylinder", mesh, vertex_index
@@ -28,7 +27,7 @@ def half_sphere() -> trimesh.Trimesh:
 
 
 @pytest.fixture(scope="session")
-def half_sphere_top() -> Tuple[str, trimesh.Trimesh, int]:
+def half_sphere_top() -> tuple[str, trimesh.Trimesh, int]:
     mesh = half_sphere()
     vertex_index = int(np.argmax(mesh.vertices[:, 2]))
     return "half_sphere", mesh, vertex_index

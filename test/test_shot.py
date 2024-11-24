@@ -1,14 +1,11 @@
-from typing import Tuple
-
 import numpy as np
 import pytest
-import trimesh
 
 import framesh.shot
 
 
 @pytest.mark.parametrize("lrf_input", ["half_cylinder_right", "half_sphere_top"])
-def test_shot_lrf(lrf_input: Tuple[str, trimesh.Trimesh, int], request) -> None:
+def test_shot_lrf(lrf_input: str, request: pytest.FixtureRequest) -> None:
     name, mesh, vertex_index = request.getfixturevalue(lrf_input)
     axes = framesh.shot.shot_lrf(mesh, vertex_index, radius=None)
     assert np.allclose(np.dot(axes.T, axes), np.eye(3))
@@ -19,7 +16,7 @@ def test_shot_lrf(lrf_input: Tuple[str, trimesh.Trimesh, int], request) -> None:
 
 
 @pytest.mark.parametrize("lrf_input", ["half_cylinder_right", "half_sphere_top"])
-def test_shot_frames(lrf_input: Tuple[str, trimesh.Trimesh, int], request) -> None:
+def test_shot_frames(lrf_input: str, request: pytest.FixtureRequest) -> None:
     name, mesh, _ = request.getfixturevalue(lrf_input)
     test_indices = np.array([0, 5, 10, 15])
 

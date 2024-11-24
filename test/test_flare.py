@@ -1,14 +1,11 @@
-from typing import Tuple
-
 import numpy as np
 import pytest
-import trimesh
 
 import framesh.flare
 
 
 @pytest.mark.parametrize("lrf_input", ["half_cylinder_right", "half_sphere_top"])
-def test_flare_lrf(lrf_input: Tuple[str, trimesh.Trimesh, int], request) -> None:
+def test_flare_lrf(lrf_input: str, request: pytest.FixtureRequest) -> None:
     name, mesh, vertex_index = request.getfixturevalue(lrf_input)
     axes = framesh.flare.flare_lrf(mesh, vertex_index, radius=3.0, z_radius=2.0)
     assert np.allclose(np.dot(axes.T, axes), np.eye(3))

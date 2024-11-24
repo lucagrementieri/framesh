@@ -1,14 +1,14 @@
 import functools
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
 import trimesh
 
 
-def timeit(method):
+def timeit(method: Callable) -> Callable:
     """Decorator that prints the execution time of a method.
 
     Args:
@@ -24,14 +24,14 @@ def timeit(method):
         result = method(*args, **kw)
         te = time.time()
 
-        print("%r  %2.2f ms" % (method.__name__, (te - ts) * 1000))
+        print(f"{method.__name__} took {((te - ts) * 1000):2.2f} ms")
         return result
 
     return timed
 
 
 def highlight_vertices(
-    output_path: Union[str, Path],
+    output_path: str | Path,
     mesh: trimesh.Trimesh,
     vertex_indices: npt.NDArray[np.int64],
     color: npt.NDArray[np.float64] = np.array([1.0, 0.0, 0.0]),
@@ -60,7 +60,7 @@ def highlight_vertices(
 
 
 def export_lrf(
-    output_path: Union[str, Path],
+    output_path: str | Path,
     center: npt.NDArray[np.float64],
     lrf: npt.NDArray[np.float64],
     colors: npt.NDArray[np.float64] = np.eye(3),
@@ -94,9 +94,9 @@ def export_lrf(
 
 def get_nearby_indices(
     mesh: trimesh.Trimesh,
-    vertex_indices: Union[int, npt.NDArray[np.int_]],
-    radius: Optional[Union[float, npt.NDArray[np.float64]]] = None,
-) -> Union[npt.NDArray[np.int64], list[npt.NDArray[np.int64]]]:
+    vertex_indices: int | npt.NDArray[np.int_],
+    radius: float | npt.NDArray[np.float64] | None = None,
+) -> npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]:
     """Gets indices of vertices within a specified radius of target vertices.
 
     Args:
@@ -119,7 +119,7 @@ def get_nearby_indices(
     neighbors = mesh.kdtree.query_ball_point(
         center_vertices, radius, workers=-1, return_sorted=False
     )
-    np_neighbors: Union[npt.NDArray[np.int64], list[npt.NDArray[np.int64]]]
+    np_neighbors: npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]
     if center_vertices.ndim == 1:
         np_neighbors = np.array(neighbors)
     else:

@@ -1,4 +1,3 @@
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -11,7 +10,7 @@ from .util import timeit
 def rops_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
-    radius: Optional[float] = None,
+    radius: float | None = None,
     use_vertex_normal: bool = False,
 ) -> npt.NDArray[np.float64]:
     """Computes the Local Reference Frame (LRF) for a vertex using Rotational Projection Statistics.

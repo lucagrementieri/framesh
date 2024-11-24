@@ -1,4 +1,3 @@
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -11,10 +10,10 @@ from .util import get_nearby_indices, timeit
 def flare_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
-    radius: Optional[float] = None,
+    radius: float | None = None,
     use_vertex_normal: bool = False,
     *,
-    z_radius: Optional[float] = None,
+    z_radius: float | None = None,
 ) -> npt.NDArray[np.float64]:
     """Computes a Local Reference Frame (LRF) for a vertex using the FLARE method.
 
