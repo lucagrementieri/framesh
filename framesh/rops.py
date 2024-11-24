@@ -68,7 +68,7 @@ def rops_lrf(
         axes[:, 0] *= -1
     if use_vertex_normal:
         axes[:, 2] = mesh.vertex_normals[vertex_index]
-        axes[:, 1] = np.cross(axes[:, 2], axes[:, 0])
+        axes[:, 1] = trimesh.transformations.unit_vector(np.cross(axes[:, 2], axes[:, 0]))
         axes[:, 0] = np.cross(axes[:, 1], axes[:, 2])
     else:
         if np.dot(mesh.vertex_normals[vertex_index], axes[:, 2]) < 0.0:
