@@ -1,6 +1,7 @@
 from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 import trimesh
 
 from .util import timeit
@@ -12,10 +13,36 @@ def rops_lrf(
     vertex_index: int,
     radius: Optional[float] = None,
     use_vertex_normal: bool = False,
-):
-    """
-    Reference: A local feature descriptor for 3D rigid objects based on rotational projection statistics. (ICCSPA 2013)
-    Authors: Yulan Guo, Ferdous A. Sohel, Mohammed Bennamoun, Jianwei Wan, and Min Lu.
+) -> npt.NDArray[np.float64]:
+    """Computes the Local Reference Frame (LRF) for a vertex using Rotational Projection Statistics.
+
+    This function implements the LRF computation method described in the paper
+    "A local feature descriptor for 3D rigid objects based on rotational projection statistics"
+    (ICCSPA 2013). The LRF provides a robust coordinate system for local feature description.
+
+    Args:
+        mesh: The input 3D mesh.
+        vertex_index: Index of the vertex for which to compute the LRF.
+        radius: Support radius for the LRF computation. If None,
+            uses the maximum distance from the vertex to any other vertex.
+        use_vertex_normal: If True, uses the vertex normal directly as the
+            z-axis of the LRF. If False, computes the z-axis from scatter matrix analysis.
+
+    Returns:
+        A 3x3 matrix where each column represents an axis of the LRF.
+        The columns are [x-axis, y-axis, z-axis] forming a right-handed coordinate system.
+
+    Note:
+        The implementation follows these steps:
+        1. Computes a weighted scatter matrix using face areas and distances
+        2. Performs eigendecomposition to get initial axes
+        3. Ensures consistent orientation using vertex normal and projection signs
+        4. Returns orthonormal axes forming a right-handed coordinate system
+
+    Reference:
+        Guo, Y., Sohel, F. A., Bennamoun, M., Wan, J., & Lu, M. (2013).
+        "A local feature descriptor for 3D rigid objects based on rotational projection statistics."
+        International Conference on Communications, Signal Processing, and their Applications (ICCSPA).
     """
     differences = mesh.vertices - mesh.vertices[vertex_index]
     distances = trimesh.util.row_norm(differences)

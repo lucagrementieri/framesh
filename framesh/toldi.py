@@ -14,9 +14,35 @@ def toldi_lrf(
     radius: Optional[float] = None,
     use_vertex_normal: bool = False,
 ) -> npt.NDArray[np.float64]:
-    """
-    Reference: TOLDI: An effective and robust approach for 3D local shape description. (2017)
-    Authors: Jiaqi Yang, Qian Zhang, Yang Xiao, and Zhiguo Cao.
+    """Computes the Local Reference Frame (LRF) for a vertex using the TOLDI method.
+
+    This function implements the LRF computation from the TOLDI (Triangular-based Overlapping
+    Local Depth Images) descriptor. It creates a robust local coordinate system at a given
+    vertex using a combination of PCA and projection-based weighting.
+
+    Args:
+        mesh: The input 3D mesh.
+        vertex_index: Index of the vertex for which to compute the LRF.
+        radius: Support radius for the LRF computation. If None,
+            uses the maximum distance from the vertex to any other vertex.
+        use_vertex_normal: If True, uses the vertex normal directly as the
+            z-axis of the LRF. If False, computes the z-axis from PCA.
+
+    Returns:
+        A 3x3 matrix where each column represents an axis of the LRF.
+        The columns are [x-axis, y-axis, z-axis] forming a right-handed coordinate system.
+
+    Note:
+        The implementation follows these steps:
+        1. Computes z-axis using PCA on a smaller neighborhood (radius/3)
+        2. Ensures consistent z-axis orientation using vertex normal
+        3. Computes x-axis using weighted projections in full neighborhood
+        4. Derives y-axis to complete right-handed coordinate system
+
+    Reference:
+        Yang, J., Zhang, Q., Xiao, Y., & Cao, Z. (2017).
+        "TOLDI: An effective and robust approach for 3D local shape description."
+        Pattern Recognition, 65, 175-187.
     """
     vertex = mesh.vertices[vertex_index]
     if not use_vertex_normal:

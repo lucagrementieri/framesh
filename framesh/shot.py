@@ -14,9 +14,37 @@ def shot_lrf(
     radius: Optional[float] = None,
     use_vertex_normal: bool = False,
 ) -> npt.NDArray[np.float64]:
-    """
-    Reference: Unique signatures of histograms for local surface description. (ECCV 2010)
-    Authors: Tombari Federico, Samuele Salti, and Luigi Di Stefano.
+    """Computes a Local Reference Frame (LRF) for a vertex using the SHOT method.
+
+    This function implements the Local Reference Frame computation from the SHOT
+    (Signature of Histograms of OrienTations) descriptor. It creates a robust and
+    repeatable local coordinate system at a given vertex using weighted covariance
+    analysis of neighboring points.
+
+    Args:
+        mesh: The input 3D mesh.
+        vertex_index: Index of the vertex for which to compute the LRF.
+        radius: Support radius for the LRF computation. If None,
+            uses the maximum distance from the vertex to any other vertex.
+        use_vertex_normal: If True, uses the vertex normal directly as the
+            z-axis of the LRF. If False, computes the z-axis from covariance analysis.
+
+    Returns:
+        A 3x3 matrix where each column represents an axis of the LRF.
+        The columns are [x-axis, y-axis, z-axis] forming a right-handed coordinate system.
+
+    Note:
+        The implementation follows these steps:
+        1. Identifies neighboring points within the support radius
+        2. Computes weighted covariance using distance-based weights
+        3. Performs eigendecomposition to get initial axes
+        4. Ensures consistent orientation using majority voting and vertex normal
+        5. Returns orthonormal axes forming a right-handed coordinate system
+
+    Reference:
+        Tombari, F., Salti, S., & Di Stefano, L. (2010).
+        "Unique signatures of histograms for local surface description."
+        European Conference on Computer Vision (ECCV).
     """
     vertex = mesh.vertices[vertex_index]
     if radius is None:
