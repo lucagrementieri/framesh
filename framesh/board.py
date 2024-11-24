@@ -60,14 +60,10 @@ def board_lrf(
     if z_neighbors is not None and radius == z_radius:
         x_neighbors = z_neighbors
     else:
-        print("Using get_nearby_indices")
-        print("vertex_index", vertex_index)
-        print("radius", radius)
         x_neighbors = get_nearby_indices(mesh, vertex_index, radius)
     distances = trimesh.util.row_norm(mesh.vertices[x_neighbors] - vertex)
     EXCLUDE_RADIUS_COEFFICIENT = 0.85
     exclude_radius = EXCLUDE_RADIUS_COEFFICIENT * (np.max(distances) if radius is None else radius)
-    print("type(x_neighbors)", type(x_neighbors))
     x_neighbors = x_neighbors[distances > exclude_radius]
     x_point_index = np.argmin(np.abs(np.dot(mesh.vertex_normals[x_neighbors], z_axis)))
     x_vector = mesh.vertices[x_point_index] - vertex
