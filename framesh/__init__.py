@@ -10,7 +10,7 @@ __all__ = [
     "flare_lrf",
     "gframes_lrf",
     "rops_lrf",
-    "shot_lrf",
     "shot_frames",
+    "shot_lrf",
     "toldi_lrf",
 ]

@@ -22,7 +22,7 @@ def test_shot_frames(lrf_input: str, request: pytest.FixtureRequest) -> None:
 
     # Compare with individual LRF computations
     frames = framesh.shot.shot_frames(mesh, test_indices, radius=None)
-    for frame, vertex_index in zip(frames, test_indices):
+    for frame, vertex_index in zip(frames, test_indices, strict=True):
         single_frame = framesh.shot.shot_lrf(mesh, vertex_index, radius=None)
         assert np.allclose(frame, single_frame)
 
@@ -30,6 +30,6 @@ def test_shot_frames(lrf_input: str, request: pytest.FixtureRequest) -> None:
     frames_with_normal = framesh.shot.shot_frames(
         mesh, test_indices, radius=2.0, use_vertex_normal=True
     )
-    for frame, vertex_index in zip(frames_with_normal, test_indices):
+    for frame, vertex_index in zip(frames_with_normal, test_indices, strict=True):
         single_frame = framesh.shot.shot_lrf(mesh, vertex_index, radius=2.0, use_vertex_normal=True)
         assert np.allclose(frame, single_frame)

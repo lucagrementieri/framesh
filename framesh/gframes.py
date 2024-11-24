@@ -73,12 +73,11 @@ def mass_diagonal(mesh: trimesh.Trimesh, method: str = "mixed_voronoi") -> npt.N
     """
     if method == "barycentric":
         return mass_diagonal_barycentric(mesh)
-    elif method == "mixed_voronoi":
+    if method == "mixed_voronoi":
         return mass_diagonal_mixed_voronoi(mesh)
-    else:
-        raise ValueError(
-            f"Unknown mass method {method}, it should be 'barycentric' or 'mixed_voronoi'"
-        )
+    raise ValueError(
+        f"Unknown mass method {method}, it should be 'barycentric' or 'mixed_voronoi'"
+    )
 
 
 def mass_diagonal_barycentric(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:

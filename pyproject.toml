@@ -36,7 +36,13 @@ classifiers = [
 dynamic = ["dependencies"]
 
 [project.optional-dependencies]
-test = ["mypy~=1.13", "pip-tools~=7.4", "pytest~=8.3", "ruff~=0.8", "scipy-stubs~=1.14"]
+test = [
+    "mypy~=1.13",
+    "pip-tools~=7.4",
+    "pytest~=8.3",
+    "ruff~=0.8",
+    "scipy-stubs~=1.14"
+]
 
 [project.urls]
 Repository = "https://github.com/lucagrementieri/framesh"
@@ -76,4 +82,29 @@ warn_unused_ignores = true
 line-length = 100
 
 [tool.ruff.lint]
-select = ["F", "E", "W", "I", "UP", "YTT", "ANN", "FBT", "B", "A"]
+select = [
+    "F",
+    "E",
+    "W",
+    "I",
+    "UP",
+    "YTT",
+    "ANN",
+    "FBT",
+    "B",
+    "A",
+    "C4",
+    "ICN",
+    "PIE",
+    "PYI",
+    "PT",
+    "Q",
+    "SIM",
+    "ARG",
+    "PTH",
+    "PLC",
+    "PLE",
+    "PLW",
+    "NPY",
+    "RUF"
+]

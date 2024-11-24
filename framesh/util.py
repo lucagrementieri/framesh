@@ -82,7 +82,7 @@ def export_lrf(
         axis_length: Length of the cylinder representing each axis.
     """
     markers = []
-    for axis, color in zip(lrf.T, colors, strict=False):
+    for axis, color in zip(lrf.T, colors, strict=True):
         end_point = center + axis_length * axis
         axis_cylinder = trimesh.creation.cylinder(
             radius=axis_radius,
@@ -116,8 +116,7 @@ def get_nearby_indices(
     if radius is None:
         if center_vertices.ndim == 1:
             return np.arange(len(mesh.vertices))
-        else:
-            return [np.arange(len(mesh.vertices))] * len(center_vertices)
+        return [np.arange(len(mesh.vertices))] * len(center_vertices)
     neighbors = mesh.kdtree.query_ball_point(
         center_vertices, radius, workers=-1, return_sorted=False
     )
