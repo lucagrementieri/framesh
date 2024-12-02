@@ -162,12 +162,7 @@ def rops_frames(
         axes[..., 0] = np.cross(axes[..., 1], axes[..., 2])
     else:
         # Ensure consistent z-axis orientation with vertex normals
-        z_dots = np.einsum(
-            "li,li->l",
-            mesh.vertex_normals[vertex_indices],
-            axes[..., 2],
-            optimize=True,
-        )
+        z_dots = np.sum(mesh.vertex_normals[vertex_indices] * axes[..., 2], axis=-1)
         z_sign = z_dots < 0
         axes[z_sign, ..., 2] *= -1
         axes[..., 1] = np.cross(axes[..., 2], axes[..., 0])
