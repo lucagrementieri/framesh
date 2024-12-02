@@ -2,6 +2,8 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
+from .util import get_nearby_indices
+
 
 def rops_lrf(
     mesh: trimesh.Trimesh,
@@ -41,20 +43,25 @@ def rops_lrf(
         International Conference on Communications, Signal Processing, and their Applications
         (ICCSPA).
     """
-    differences = mesh.vertices - mesh.vertices[vertex_index]
-    distances = trimesh.util.row_norm(differences)
+    vertex = mesh.vertices[vertex_index]
     if radius is None:
+        distances = trimesh.util.row_norm(mesh.vertices - vertex)
         radius = np.max(distances)
-    area_weights = mesh.area_faces / mesh.area
-    centers_differences = mesh.triangles_center - mesh.vertices[vertex_index]
+        local_triangle_indices = np.arange(len(mesh.faces))
+    else:
+        neighbors = get_nearby_indices(mesh, vertex_index, radius)
+        local_triangle_indices = np.flatnonzero(np.any(np.isin(mesh.faces, neighbors), axis=-1))
+    differences = mesh.triangles[local_triangle_indices] - vertex
+    area_weights = mesh.area_faces[local_triangle_indices]
+    area_weights /= area_weights.sum()
+    centers_differences = mesh.triangles_center[local_triangle_indices] - vertex
     distance_weights = np.square(radius - trimesh.util.row_norm(centers_differences))
 
-    # Compute scatter matrix with diagonal adjustment
     mesh_scatter = (
         np.einsum(
             "fik,fjm,ij,f->km",
-            differences[mesh.faces],
-            differences[mesh.faces],
+            differences,
+            differences,
             np.eye(3) + 1,
             area_weights * distance_weights,
             optimize=True,
@@ -62,6 +69,7 @@ def rops_lrf(
         / 12
     )
     _, eigenvectors = np.linalg.eigh(mesh_scatter)
+
     axes = np.fliplr(eigenvectors)
     hx = np.einsum(
         "fk,k,f->",
