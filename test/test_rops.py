@@ -21,6 +21,7 @@ def test_rops_lrf(lrf_input: str, request: pytest.FixtureRequest) -> None:
 def test_rops_frames(lrf_input: str, request: pytest.FixtureRequest) -> None:
     name, mesh, _ = request.getfixturevalue(lrf_input)
     test_indices = np.array([0, 5, 10, 15])
+    # test_indices = (37, 44)
 
     # Compare with individual LRF computations
     frames = framesh.rops.rops_frames(mesh, test_indices, radius=None)
@@ -30,6 +31,26 @@ def test_rops_frames(lrf_input: str, request: pytest.FixtureRequest) -> None:
 
     # Compare with individual LRF computations using vertex normals
     frames_with_normal = framesh.rops.rops_frames(
+        mesh, test_indices, radius=2.0, use_vertex_normal=True
+    )
+    for frame, vertex_index in zip(frames_with_normal, test_indices, strict=True):
+        single_frame = framesh.rops.rops_lrf(mesh, vertex_index, radius=2.0, use_vertex_normal=True)
+        assert np.allclose(frame, single_frame)
+
+
+@pytest.mark.parametrize("lrf_input", ["half_cylinder_right", "half_sphere_top"])
+def test_rops_frames_iterative(lrf_input: str, request: pytest.FixtureRequest) -> None:
+    name, mesh, _ = request.getfixturevalue(lrf_input)
+    test_indices = (37, 44)
+
+    # Compare with individual LRF computations
+    frames = framesh.rops.rops_frames_iterative(mesh, test_indices, radius=None)
+    for frame, vertex_index in zip(frames, test_indices, strict=True):
+        single_frame = framesh.rops.rops_lrf(mesh, vertex_index, radius=None)
+        assert np.allclose(frame, single_frame), f"vertex_index {vertex_index}"
+
+    # Compare with individual LRF computations using vertex normals
+    frames_with_normal = framesh.rops.rops_frames_iterative(
         mesh, test_indices, radius=2.0, use_vertex_normal=True
     )
     for frame, vertex_index in zip(frames_with_normal, test_indices, strict=True):
