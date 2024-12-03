@@ -4,8 +4,6 @@ import trimesh
 
 from .util import get_nearby_indices
 
-# TODO: test board with PCL implementation
-
 
 def board_lrf(
     mesh: trimesh.Trimesh,
@@ -48,13 +46,16 @@ def board_lrf(
         International Conference on Computer Vision (ICCV).
     """
     vertex = mesh.vertices[vertex_index]
+
+    if z_radius is None:
+        z_radius = radius
     if use_vertex_normal:
         z_neighbors = None
         z_axis = mesh.vertex_normals[vertex_index]
     else:
         z_neighbors = get_nearby_indices(mesh, vertex_index, z_radius)
         _, z_axis = trimesh.points.plane_fit(mesh.vertices[z_neighbors])
-        if np.dot(z_axis, mesh.vertex_normals[vertex_index]) < 0.0:
+        if np.dot(z_axis, mesh.vertex_normals[z_neighbors].sum(axis=0)) < 0.0:
             z_axis *= -1
 
     if z_neighbors is not None and radius == z_radius:
@@ -64,7 +65,9 @@ def board_lrf(
     distances = trimesh.util.row_norm(mesh.vertices[x_neighbors] - vertex)
     EXCLUDE_RADIUS_COEFFICIENT = 0.85
     exclude_radius = EXCLUDE_RADIUS_COEFFICIENT * (np.max(distances) if radius is None else radius)
-    x_neighbors = x_neighbors[distances > exclude_radius]
+    radius_mask = distances > exclude_radius
+    if np.any(radius_mask):
+        x_neighbors = x_neighbors[distances > exclude_radius]
     x_point_index = np.argmin(np.abs(np.dot(mesh.vertex_normals[x_neighbors], z_axis)))
     x_vector = mesh.vertices[x_neighbors[x_point_index]] - vertex
     y_axis = trimesh.transformations.unit_vector(np.cross(z_axis, x_vector))
@@ -105,16 +108,23 @@ def board_frames(
     frame_vertices = mesh.vertices[vertex_indices]
     n_vertices = len(vertex_indices)
 
-    # TODO: add condition for z_radius == None, where we can fit the same plane to all points
+    if z_radius is None:
+        z_radius = radius
     if use_vertex_normal:
         z_neighbors = None
         z_axes = mesh.vertex_normals[vertex_indices]
+    elif z_radius is None:
+        _, z_axis = trimesh.points.plane_fit(mesh.vertices)
+        if np.dot(z_axis, mesh.vertex_normals.sum(axis=0)) < 0.0:
+            z_axis *= -1
+        z_axes = np.tile(z_axis, (len(vertex_indices), 1))
     else:
         z_neighbors = get_nearby_indices(mesh, vertex_indices, z_radius)
         z_axes = np.zeros((n_vertices, 3))
         for i, neighbors in enumerate(z_neighbors):
             _, z_axes[i] = trimesh.points.plane_fit(mesh.vertices[neighbors])
-        z_axes[np.sum(z_axes * mesh.vertex_normals[vertex_indices], axis=-1) < 0.0] *= -1
+            if np.dot(z_axes[i], mesh.vertex_normals[neighbors].sum(axis=0)) < 0.0:
+                z_axes[i] *= -1
 
     EXCLUDE_RADIUS_COEFFICIENT = 0.85
     if radius is None:
@@ -135,6 +145,10 @@ def board_frames(
         distances = trimesh.util.row_norm(differences)
         exclude_radius = EXCLUDE_RADIUS_COEFFICIENT * radius
         selected_indices = np.flatnonzero(distances > exclude_radius)
+        valid_frame_indices = np.unique(frame_indices[selected_indices])
+        if not np.array_equal(valid_frame_indices, np.arange(n_vertices)):
+            exclude_radius[np.isin(frame_indices, valid_frame_indices, invert=True)] = 0.0
+            selected_indices = np.flatnonzero(distances > exclude_radius)
         frame_indices = frame_indices[selected_indices]
         x_neighbors = flat_neighbors[selected_indices]
 

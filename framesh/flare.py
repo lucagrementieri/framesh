@@ -65,7 +65,7 @@ def flare_lrf(
     exclude_radius = EXCLUDE_RADIUS_COEFFICIENT * (np.max(distances) if radius is None else radius)
     x_neighbors = x_neighbors[distances > exclude_radius]
     x_point_index = np.argmax(np.dot(mesh.vertices[x_neighbors] - vertex, z_axis))
-    x_vector = mesh.vertices[x_point_index] - vertex
+    x_vector = mesh.vertices[x_neighbors[x_point_index]] - vertex
     y_axis = trimesh.transformations.unit_vector(np.cross(z_axis, x_vector))
     x_axis = np.cross(y_axis, z_axis)
     axes = np.column_stack((x_axis, y_axis, z_axis))

@@ -122,7 +122,7 @@ def get_nearby_indices(
     )
     np_neighbors: npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]
     if center_vertices.ndim == 1:
-        np_neighbors = np.array(neighbors)
+        np_neighbors = np.sort(neighbors)
     else:
-        np_neighbors = [np.array(n) for n in neighbors]
+        np_neighbors = [np.sort(n) for n in neighbors]
     return np_neighbors
