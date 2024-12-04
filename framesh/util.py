@@ -8,6 +8,13 @@ import numpy.typing as npt
 import trimesh
 
 DEFAULT_COLORS = np.eye(3)
+ABSOLUTE_TOLERANCE = 1e-12
+
+
+def robust_sign(x: npt.NDArray, atol: float = ABSOLUTE_TOLERANCE) -> npt.NDArray:
+    sign_array = np.zeros_like(x)
+    np.sign(x, out=sign_array, where=np.logical_not(np.isclose(x, 0, rtol=0.0, atol=atol)))
+    return sign_array
 
 
 def timeit(method: Callable) -> Callable:
