@@ -11,6 +11,10 @@ DEFAULT_COLORS = np.eye(3)
 ABSOLUTE_TOLERANCE = 1e-12
 
 
+def round_zeros(x: npt.NDArray, atol: float = ABSOLUTE_TOLERANCE) -> npt.NDArray:
+    return np.where(np.isclose(x, 0.0, rtol=0, atol=atol), 0, x)
+
+
 def robust_sign(x: npt.NDArray, atol: float = ABSOLUTE_TOLERANCE) -> npt.NDArray:
     sign_array = np.zeros_like(x)
     np.sign(x, out=sign_array, where=np.logical_not(np.isclose(x, 0, rtol=0.0, atol=atol)))

@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import get_nearby_indices
+from .util import get_nearby_indices, round_zeros
 
 
 def board_lrf(
@@ -51,10 +51,11 @@ def board_lrf(
         z_radius = radius
     if use_vertex_normal:
         z_neighbors = None
-        z_axis = mesh.vertex_normals[vertex_index]
+        z_axis = round_zeros(mesh.vertex_normals[vertex_index])
     else:
         z_neighbors = get_nearby_indices(mesh, vertex_index, z_radius)
         _, z_axis = trimesh.points.plane_fit(mesh.vertices[z_neighbors])
+        z_axis = round_zeros(z_axis)
         if np.dot(z_axis, mesh.vertex_normals[z_neighbors].sum(axis=0)) < 0.0:
             z_axis *= -1
 
@@ -112,9 +113,10 @@ def board_frames(
         z_radius = radius
     if use_vertex_normal:
         z_neighbors = None
-        z_axes = mesh.vertex_normals[vertex_indices]
+        z_axes = round_zeros(mesh.vertex_normals[vertex_indices])
     elif z_radius is None:
         _, z_axis = trimesh.points.plane_fit(mesh.vertices)
+        z_axis = round_zeros(z_axis)
         if np.dot(z_axis, mesh.vertex_normals.sum(axis=0)) < 0.0:
             z_axis *= -1
         z_axes = np.tile(z_axis, (len(vertex_indices), 1))
@@ -123,6 +125,7 @@ def board_frames(
         z_axes = np.zeros((n_vertices, 3))
         for i, neighbors in enumerate(z_neighbors):
             _, z_axes[i] = trimesh.points.plane_fit(mesh.vertices[neighbors])
+            z_axes[i] = round_zeros(z_axes[i])
             if np.dot(z_axes[i], mesh.vertex_normals[neighbors].sum(axis=0)) < 0.0:
                 z_axes[i] *= -1
 

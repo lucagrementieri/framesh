@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import ABSOLUTE_TOLERANCE, get_nearby_indices, robust_sign
+from .util import ABSOLUTE_TOLERANCE, get_nearby_indices, robust_sign, round_zeros
 
 
 def shot_lrf(
@@ -58,7 +58,7 @@ def shot_lrf(
     scale_factors /= scale_factors.sum()
     weighted_covariance = np.einsum("i,ij,ik->jk", scale_factors, differences, differences)
     _, eigenvectors = np.linalg.eigh(weighted_covariance)
-    eigenvectors[np.isclose(eigenvectors, 0, rtol=0, atol=ABSOLUTE_TOLERANCE)] = 0.0
+    eigenvectors = round_zeros(eigenvectors)
     axes = np.fliplr(eigenvectors)
 
     x_sign_votes = robust_sign(np.dot(differences, axes[:, 0]))
@@ -66,9 +66,7 @@ def shot_lrf(
         axes[:, 0] *= -1
 
     if use_vertex_normal:
-        robust_normal = np.copy(mesh.vertex_normals[vertex_index])
-        robust_normal[np.isclose(robust_normal, 0, rtol=0, atol=ABSOLUTE_TOLERANCE)] = 0.0
-        axes[:, 2] = robust_normal
+        axes[:, 2] = round_zeros(mesh.vertex_normals[vertex_index])
         axes[:, 1] = trimesh.transformations.unit_vector(np.cross(axes[:, 2], axes[:, 0]))
         axes[:, 0] = np.cross(axes[:, 1], axes[:, 2])
     else:
@@ -130,7 +128,7 @@ def shot_frames(
 
     # Compute eigendecomposition for all vertices
     _, eigenvectors = np.linalg.eigh(weighted_covariance)
-    eigenvectors[np.isclose(eigenvectors, 0, rtol=0, atol=ABSOLUTE_TOLERANCE)] = 0.0
+    eigenvectors = round_zeros(eigenvectors)
     axes = np.flip(eigenvectors, axis=-1)
 
     # Ensure consistent x-axis orientation
@@ -144,9 +142,7 @@ def shot_frames(
         axes[x_sign, :, 0] *= -1
 
     if use_vertex_normal:
-        robust_normal = np.copy(mesh.vertex_normals[vertex_indices])
-        robust_normal[np.isclose(robust_normal, 0, rtol=0, atol=ABSOLUTE_TOLERANCE)] = 0.0
-        axes[..., 2] = robust_normal
+        axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
         axes[..., 1] = trimesh.transformations.unit_vector(
             np.cross(axes[..., 2], axes[..., 0]), axis=-1
         )

@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import get_nearby_indices, ABSOLUTE_TOLERANCE
+from .util import get_nearby_indices, ABSOLUTE_TOLERANCE, round_zeros
 
 
 def rops_lrf(
@@ -71,7 +71,7 @@ def rops_lrf(
         / 12
     )
     _, eigenvectors = np.linalg.eigh(mesh_scatter)
-    eigenvectors[np.isclose(eigenvectors, 0, rtol=0, atol=ABSOLUTE_TOLERANCE)] = 0.0
+    eigenvectors = round_zeros(eigenvectors)
     axes = np.fliplr(eigenvectors)
 
     hx = np.einsum(
@@ -193,7 +193,7 @@ def rops_frames(
 
     # Compute eigendecomposition for all vertices
     _, eigenvectors = np.linalg.eigh(mesh_scatter)
-    eigenvectors[np.isclose(eigenvectors, 0, rtol=0, atol=ABSOLUTE_TOLERANCE)] = 0.0
+    eigenvectors = round_zeros(eigenvectors)
     axes = np.flip(eigenvectors, axis=-1)
 
     # Ensure consistent x-axis orientation
