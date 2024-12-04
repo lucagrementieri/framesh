@@ -148,14 +148,16 @@ def board_frames(
         distances = trimesh.util.row_norm(differences)
         exclude_radius = EXCLUDE_RADIUS_COEFFICIENT * radius
         selected_indices = np.flatnonzero(distances > exclude_radius)
-        valid_frame_indices = np.unique(frame_indices[selected_indices])
+        valid_frame_indices = trimesh.grouping.unique_bincount(frame_indices[selected_indices])
         if not np.array_equal(valid_frame_indices, np.arange(n_vertices)):
             exclude_radius[np.isin(frame_indices, valid_frame_indices, invert=True)] = 0.0
             selected_indices = np.flatnonzero(distances > exclude_radius)
         frame_indices = frame_indices[selected_indices]
         x_neighbors = flat_neighbors[selected_indices]
 
-    unique_frame_indices, x_neighbors_counts = np.unique(frame_indices, return_counts=True)
+    unique_frame_indices, x_neighbors_counts = trimesh.grouping.unique_bincount(
+        frame_indices, return_counts=True
+    )
     assert np.array_equal(unique_frame_indices, np.arange(n_vertices))
     assert np.array_equal(frame_indices, np.repeat(np.arange(n_vertices), x_neighbors_counts))
     reduce_indices = np.insert(np.cumsum(x_neighbors_counts)[:-1], 0, 0)
