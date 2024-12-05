@@ -2,9 +2,10 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import get_nearby_indices
+from .util import get_nearby_indices, round_zeros, timeit
 
 
+@timeit
 def toldi_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
@@ -43,27 +44,35 @@ def toldi_lrf(
         Pattern Recognition, 65, 175-187.
     """
     vertex = mesh.vertices[vertex_index]
+    neighbor_indices = get_nearby_indices(mesh, vertex_index, radius)
+    neighbor_vertices = mesh.vertices[neighbor_indices]
+    differences = neighbor_vertices - vertex
+
     if not use_vertex_normal:
-        z_radius = radius / 3.0 if radius is not None else None
-        z_neighbors = get_nearby_indices(mesh, vertex_index, z_radius)
-        z_vertices = mesh.vertices[z_neighbors]
+        if radius is None:
+            z_vertices = neighbor_vertices
+        else:
+            z_radius = radius / 3.0
+            z_neighbors = get_nearby_indices(mesh, vertex_index, z_radius)
+            z_vertices = mesh.vertices[z_neighbors]
         z_centroid = np.mean(z_vertices, axis=0)
-        differences = z_vertices - z_centroid
-        covariance = np.dot(differences.T, differences)
+        centroid_differences = z_vertices - z_centroid
+        covariance = np.dot(centroid_differences.T, centroid_differences)
         _, eigenvectors = np.linalg.eigh(covariance)
-        z_axis = eigenvectors[:, 0]
-        if np.dot(mesh.vertex_normals[vertex_index], z_axis) < 0.0:
+        z_axis = round_zeros(eigenvectors[:, 0])
+        if np.dot(np.sum(differences, axis=0), z_axis) > 0.0:
             z_axis *= -1
     else:
-        z_axis = mesh.vertex_normals[vertex_index]
-    x_neighbors = get_nearby_indices(mesh, vertex_index, radius)
-    x_vertices = mesh.vertices[x_neighbors]
-    differences = x_vertices - vertex
+        z_axis = round_zeros(mesh.vertex_normals[vertex_index])
     distances = trimesh.util.row_norm(differences)
     projection_distances = np.dot(differences, z_axis)
     scale_factors = np.square((radius - distances) * projection_distances)
-    x_axis = np.dot(x_vertices.T, scale_factors)
+    x_axis = round_zeros(np.dot(differences.T, scale_factors))
     y_axis = trimesh.transformations.unit_vector(np.cross(z_axis, x_axis))
-    x_axis = np.cross(y_axis, z_axis)
+    if np.isnan(y_axis).any():
+        x_axis = np.roll(z_axis, 1)
+        y_axis = np.cross(z_axis, x_axis)
+    else:
+        x_axis = np.cross(y_axis, z_axis)
     axes = np.column_stack((x_axis, y_axis, z_axis))
     return axes
