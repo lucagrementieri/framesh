@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import get_nearby_indices, ABSOLUTE_TOLERANCE, round_zeros
+from .util import get_nearby_indices, round_zeros
 
 
 def rops_lrf(
@@ -27,8 +27,9 @@ def rops_lrf(
             z-axis of the LRF. If False, computes the z-axis from scatter matrix analysis.
 
     Returns:
-        A 3x3 matrix where each column represents an axis of the LRF.
-        The columns are [x-axis, y-axis, z-axis] forming a right-handed coordinate system.
+        Axes of the LRF stored in columns [x-axis, y-axis, z-axis] forming a right-handed
+        coordinate system.
+        Shape: (3, 3)
 
     Note:
         The implementation follows these steps:

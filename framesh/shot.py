@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import ABSOLUTE_TOLERANCE, get_nearby_indices, robust_sign, round_zeros
+from .util import get_nearby_indices, robust_sign, round_zeros
 
 
 def shot_lrf(
@@ -120,7 +120,7 @@ def shot_frames(
         differences = mesh.vertices[flat_neighbors] - frame_vertices[frame_indices]  # (M, 3)
         distances = trimesh.util.row_norm(differences)
         scale_factors = radius - distances
-        reduce_indices = np.insert(np.cumsum(neighbors_counts)[:-1], 0, 0.0)
+        reduce_indices = np.insert(np.cumsum(neighbors_counts)[:-1], 0, 0)
         scale_factor_normalizer = np.add.reduceat(scale_factors, reduce_indices)
         scale_factors /= scale_factor_normalizer[frame_indices]
         covariances = np.einsum("m,mi,mj->mij", scale_factors, differences, differences)

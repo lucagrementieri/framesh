@@ -29,8 +29,9 @@ def board_lrf(
             uses the same value as radius.
 
     Returns:
-        A 3x3 matrix where each column represents an axis of the LRF.
-        The columns are [x-axis, y-axis, z-axis] forming a right-handed coordinate system.
+        Axes of the LRF stored in columns [x-axis, y-axis, z-axis] forming a right-handed
+        coordinate system.
+        Shape: (3, 3)
 
     Note:
         The implementation follows these steps:

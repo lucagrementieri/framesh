@@ -278,8 +278,9 @@ def gframes_lrf(
             'any' (at least one vertex in triangle must be in neighborhood).
 
     Returns:
-        A 3x3 matrix where each column represents an axis of the LRF.
-        The columns are [x-axis, y-axis, z-axis] forming a right-handed coordinate system.
+        Axes of the LRF stored in columns [x-axis, y-axis, z-axis] forming a right-handed
+        coordinate system.
+        Shape: (3, 3)
 
     Note:
         The implementation follows these steps:
