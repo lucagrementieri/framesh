@@ -162,6 +162,7 @@ def get_nearby_indices(
             exclude_idx = np.searchsorted(np_neighbors, vertex_indices)
             np_neighbors = np.delete(np_neighbors, exclude_idx)
     else:
+        assert not isinstance(vertex_indices, int)
         np_neighbors = [np.array(n) for n in neighbors]
         if exclude_self:
             np_neighbors = [

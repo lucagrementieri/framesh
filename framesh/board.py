@@ -130,9 +130,9 @@ def board_frames(
     selected_indices = np.flatnonzero(distances > exclude_radius)
     valid_frame_indices = trimesh.grouping.unique_bincount(frame_indices[selected_indices])
     if not np.array_equal(valid_frame_indices, np.arange(n_vertices)):
-        exclude_radius = np.repeat(exclude_radius, distances.size)
-        exclude_radius[np.isin(frame_indices, valid_frame_indices, invert=True)] = 0.0
-        selected_indices = np.flatnonzero(distances > exclude_radius)
+        exclude_radiuses = np.repeat(exclude_radius, distances.size)
+        exclude_radiuses[np.isin(frame_indices, valid_frame_indices, invert=True)] = 0.0
+        selected_indices = np.flatnonzero(distances > exclude_radiuses)
     frame_indices = frame_indices[selected_indices]
     x_neighbors = flat_neighbors[selected_indices]
 
@@ -151,5 +151,5 @@ def board_frames(
     x_vector = mesh.vertices[x_neighbors[x_point_index]] - frame_vertices
     y_axes = trimesh.transformations.unit_vector(np.cross(z_axes, x_vector), axis=-1)
     x_axes = np.cross(y_axes, z_axes)
-    axes = np.stack((x_axes, y_axes, z_axes), axis=-1)
+    axes: npt.NDArray[np.float64] = np.stack((x_axes, y_axes, z_axes), axis=-1)
     return axes

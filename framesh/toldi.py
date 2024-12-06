@@ -132,7 +132,7 @@ def toldi_frames(
         weighted_covariance = round_zeros(np.add.reduceat(covariances, z_reduce_indices))
         _, eigenvectors = np.linalg.eigh(weighted_covariance)
         z_axes = round_zeros(eigenvectors[..., 0])
-        differences_sum = np.add.reduceat(differences, reduce_indices, axis=0)
+        differences_sum = np.add.reduceat(differences, reduce_indices)
         z_dots = np.sum(differences_sum * z_axes, axis=-1)
         z_axes[z_dots > 0] *= -1
 
@@ -151,5 +151,5 @@ def toldi_frames(
     y_axes[~null_y_mask] = trimesh.transformations.unit_vector(y_axes[~null_y_mask], axis=-1)
     x_axes[~null_y_mask] = np.cross(y_axes[~null_y_mask], z_axes[~null_y_mask])
 
-    axes = np.stack((x_axes, y_axes, z_axes), axis=-1)
+    axes: npt.NDArray[np.float64] = np.stack((x_axes, y_axes, z_axes), axis=-1)
     return axes

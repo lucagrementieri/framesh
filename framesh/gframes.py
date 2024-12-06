@@ -252,7 +252,7 @@ def mean_curvature(mesh: trimesh.Trimesh, eps: float = 1e-14) -> npt.NDArray[np.
 def gframes_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
-    radius: float | None = None,
+    radius: float,
     *,
     use_vertex_normal: bool = False,
     scalar_field: npt.NDArray[np.float64],
@@ -267,8 +267,7 @@ def gframes_lrf(
     Args:
         mesh: The input 3D mesh.
         vertex_index: Index of the vertex for which to compute the LRF.
-        radius: Support radius for the LRF computation. If None,
-            uses the maximum distance from the vertex to any other vertex.
+        radius: Support radius for the LRF computation.
         use_vertex_normal: If True, uses the vertex normal directly as the
             z-axis of the LRF. If False, computes the z-axis from face normals.
         scalar_field: Scalar values defined at each vertex of the mesh.
