@@ -33,6 +33,22 @@ lrf = shot_lrf(mesh, vertex_index=0, radius=1.0)
 print(lrf)
 ```
 
+Each method also comes with a vectorized version for computing LRFs on multiple vertices simultaneously, offering better performance for batch processing:
+
+```python
+import trimesh
+import numpy as np
+from framesh import shot_frames
+
+# Load your mesh
+mesh = trimesh.load('your_mesh.obj')
+# Compute LRFs for multiple vertices
+vertex_indices = np.array([0, 1, 2, 3])  # compute LRFs for first 4 vertices
+lrfs = shot_frames(mesh, vertex_indices=vertex_indices, radius=1.0)
+# The result is a batch of 3x3 matrices with shape (n_vertices, 3, 3)
+print(lrfs.shape)  # outputs: (4, 3, 3)
+```
+
 ## Implemented Methods
 
 - **SHOT**
