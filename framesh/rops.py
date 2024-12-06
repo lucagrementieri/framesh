@@ -55,7 +55,7 @@ def rops_lrf(
         np.clip(radius - trimesh.util.row_norm(centers_differences), a_min=0, a_max=radius)
     )
 
-    mesh_scatter = (
+    mesh_scatter = round_zeros(
         np.einsum(
             "fik,fjm,ij,f->km",
             differences,
@@ -146,7 +146,7 @@ def rops_frames(
     mesh_scatter = np.empty((n_vertices, 3, 3))
     for frame_index in range(n_vertices):
         mask = frame_indices == frame_index
-        mesh_scatter[frame_index] = (
+        mesh_scatter[frame_index] = round_zeros(
             np.einsum(
                 "sik,sjm,ij,s->km",
                 differences[mask],

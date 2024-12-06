@@ -7,7 +7,7 @@ import framesh.shot
 @pytest.mark.parametrize("lrf_input", ["half_cylinder_right", "half_sphere_top"])
 def test_shot_lrf(lrf_input: str, request: pytest.FixtureRequest) -> None:
     name, mesh, vertex_index = request.getfixturevalue(lrf_input)
-    axes = framesh.shot.shot_lrf(mesh, vertex_index, radius=None)
+    axes = framesh.shot.shot_lrf(mesh, vertex_index, radius=1.5)
     assert np.allclose(np.dot(axes.T, axes), np.eye(3))
     assert np.isclose(np.linalg.det(axes), 1.0)
 
@@ -23,9 +23,9 @@ def test_shot_frames(lrf_input: str, request: pytest.FixtureRequest) -> None:
     test_indices = np.array([0, 5, 10, 15])
 
     # Compare with individual LRF computations
-    frames = framesh.shot.shot_frames(mesh, test_indices, radius=None)
+    frames = framesh.shot.shot_frames(mesh, test_indices, radius=1.5)
     for frame, vertex_index in zip(frames, test_indices, strict=True):
-        single_frame = framesh.shot.shot_lrf(mesh, vertex_index, radius=None)
+        single_frame = framesh.shot.shot_lrf(mesh, vertex_index, radius=1.5)
         assert np.allclose(frame, single_frame)
 
     # Compare with individual LRF computations using vertex normals

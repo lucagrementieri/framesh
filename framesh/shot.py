@@ -8,7 +8,7 @@ from .util import get_nearby_indices, robust_sign, round_zeros
 def shot_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
-    radius: float | None = None,
+    radius: float,
     *,
     use_vertex_normal: bool = False,
 ) -> npt.NDArray[np.float64]:
@@ -22,8 +22,7 @@ def shot_lrf(
     Args:
         mesh: The input 3D mesh.
         vertex_index: Index of the vertex for which to compute the LRF.
-        radius: Support radius for the LRF computation. If None,
-            uses the maximum distance from the vertex to any other vertex.
+        radius: Support radius for the LRF computation.
         use_vertex_normal: If True, uses the vertex normal directly as the
             z-axis of the LRF. If False, computes the z-axis from covariance analysis.
 
@@ -46,17 +45,14 @@ def shot_lrf(
         European Conference on Computer Vision (ECCV).
     """
     vertex = mesh.vertices[vertex_index]
-    if radius is None:
-        differences = mesh.vertices - vertex
-        distances = trimesh.util.row_norm(differences)
-        radius = np.max(distances)
-    else:
-        neighbors = get_nearby_indices(mesh, vertex_index, radius)
-        differences = mesh.vertices[neighbors] - vertex
-        distances = trimesh.util.row_norm(differences)
+    neighbors = get_nearby_indices(mesh, vertex_index, radius, exclude_self=True)
+    differences = mesh.vertices[neighbors] - vertex
+    distances = trimesh.util.row_norm(differences)
     scale_factors = radius - distances
     scale_factors /= scale_factors.sum()
-    weighted_covariance = np.einsum("i,ij,ik->jk", scale_factors, differences, differences)
+    weighted_covariance = round_zeros(
+        np.einsum("i,ij,ik->jk", scale_factors, differences, differences)
+    )
     _, eigenvectors = np.linalg.eigh(weighted_covariance)
     eigenvectors = round_zeros(eigenvectors)
     axes = np.fliplr(eigenvectors)
@@ -80,7 +76,7 @@ def shot_lrf(
 def shot_frames(
     mesh: trimesh.Trimesh,
     vertex_indices: npt.NDArray[np.int_],
-    radius: float | None = None,
+    radius: float,
     *,
     use_vertex_normal: bool = False,
 ) -> npt.NDArray[np.float64]:
@@ -92,8 +88,7 @@ def shot_frames(
         mesh: The input 3D mesh.
         vertex_indices: Array of vertex indices for which to compute LRFs.
             Shape: (L,) where L is the number of vertices with LRFs.
-        radius: Support radius for the LRF computation. If None,
-            uses the maximum distance from each vertex to any other vertex.
+        radius: Support radius for the LRF computation.
         use_vertex_normal: If True, uses vertex normals directly as the
             z-axes of the LRFs. If False, computes z-axes from covariance analysis.
 
@@ -106,25 +101,18 @@ def shot_frames(
     frame_vertices = mesh.vertices[vertex_indices]
     n_vertices = len(vertex_indices)
 
-    if radius is None:
-        differences = mesh.vertices - np.expand_dims(frame_vertices, axis=1)  # (L, V, 3)
-        distances = np.linalg.norm(differences, axis=-1)
-        scale_factors = np.max(distances, axis=-1, keepdims=True) - distances
-        scale_factors /= np.sum(scale_factors, axis=-1, keepdims=True)
-        weighted_covariance = np.einsum("lv,lvi,lvj->lij", scale_factors, differences, differences)
-    else:
-        neighbors = get_nearby_indices(mesh, vertex_indices, radius)
-        neighbors_counts = np.array([len(n) for n in neighbors])
-        flat_neighbors = np.concatenate(neighbors)
-        frame_indices = np.repeat(np.arange(n_vertices), neighbors_counts)
-        differences = mesh.vertices[flat_neighbors] - frame_vertices[frame_indices]  # (M, 3)
-        distances = trimesh.util.row_norm(differences)
-        scale_factors = radius - distances
-        reduce_indices = np.insert(np.cumsum(neighbors_counts)[:-1], 0, 0)
-        scale_factor_normalizer = np.add.reduceat(scale_factors, reduce_indices)
-        scale_factors /= scale_factor_normalizer[frame_indices]
-        covariances = np.einsum("m,mi,mj->mij", scale_factors, differences, differences)
-        weighted_covariance = np.add.reduceat(covariances, reduce_indices)
+    neighbors = get_nearby_indices(mesh, vertex_indices, radius, exclude_self=True)
+    neighbors_counts = np.array([len(n) for n in neighbors])
+    flat_neighbors = np.concatenate(neighbors)
+    frame_indices = np.repeat(np.arange(n_vertices), neighbors_counts)
+    differences = mesh.vertices[flat_neighbors] - frame_vertices[frame_indices]  # (M, 3)
+    distances = trimesh.util.row_norm(differences)
+    scale_factors = radius - distances
+    reduce_indices = np.insert(np.cumsum(neighbors_counts)[:-1], 0, 0)
+    scale_factor_normalizer = np.add.reduceat(scale_factors, reduce_indices)
+    scale_factors /= scale_factor_normalizer[frame_indices]
+    covariances = np.einsum("m,mi,mj->mij", scale_factors, differences, differences)
+    weighted_covariance = round_zeros(np.add.reduceat(covariances, reduce_indices))
 
     # Compute eigendecomposition for all vertices
     _, eigenvectors = np.linalg.eigh(weighted_covariance)
@@ -132,15 +120,9 @@ def shot_frames(
     axes = np.flip(eigenvectors, axis=-1)
 
     # Ensure consistent x-axis orientation
-    if radius is None:
-        x_sign_votes = robust_sign(np.sum(differences * axes[:, None, :, 0], axis=-1))
-        x_sign = np.sum(x_sign_votes, axis=1) < 0
-        axes[x_sign, :, 0] *= -1
-    else:
-        x_sign_votes = robust_sign(np.sum(differences * axes[frame_indices, :, 0], axis=-1))
-        x_sign = np.add.reduceat(x_sign_votes, reduce_indices) < 0
-        axes[x_sign, :, 0] *= -1
-
+    x_sign_votes = robust_sign(np.sum(differences * axes[frame_indices, :, 0], axis=-1))
+    x_sign = np.add.reduceat(x_sign_votes, reduce_indices) < 0
+    axes[x_sign, :, 0] *= -1
     if use_vertex_normal:
         axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
         axes[..., 1] = trimesh.transformations.unit_vector(

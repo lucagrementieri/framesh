@@ -7,11 +7,11 @@ import framesh.board
 @pytest.mark.parametrize("lrf_input", ["half_cylinder_right", "half_sphere_top"])
 def test_board_lrf(lrf_input: str, request: pytest.FixtureRequest) -> None:
     name, mesh, vertex_index = request.getfixturevalue(lrf_input)
-    axes = framesh.board.board_lrf(mesh, vertex_index, radius=3.0, z_radius=1.0)
+    axes = framesh.board.board_lrf(mesh, vertex_index, radius=1.5, z_radius=1.0)
     assert np.allclose(np.dot(axes.T, axes), np.eye(3))
     assert np.isclose(np.linalg.det(axes), 1.0)
 
-    none_z_radius_axes = framesh.board.board_lrf(mesh, vertex_index, radius=3.0)
+    none_z_radius_axes = framesh.board.board_lrf(mesh, vertex_index, radius=1.5)
     assert np.allclose(np.dot(none_z_radius_axes.T, none_z_radius_axes), np.eye(3))
     assert np.isclose(np.linalg.det(none_z_radius_axes), 1.0)
 
@@ -29,14 +29,14 @@ def test_board_frames(lrf_input: str, request: pytest.FixtureRequest) -> None:
     test_indices = np.array([0, 5, 10, 15])
 
     # Compare with individual LRF computations
-    frames = framesh.board.board_frames(mesh, test_indices, radius=3.0, z_radius=1.0)
+    frames = framesh.board.board_frames(mesh, test_indices, radius=1.5, z_radius=1.0)
     for frame, vertex_index in zip(frames, test_indices, strict=True):
-        single_frame = framesh.board.board_lrf(mesh, vertex_index, radius=3.0, z_radius=1.0)
+        single_frame = framesh.board.board_lrf(mesh, vertex_index, radius=1.5, z_radius=1.0)
         assert np.allclose(frame, single_frame)
 
-    none_z_radius_frames = framesh.board.board_frames(mesh, test_indices, radius=3.0)
+    none_z_radius_frames = framesh.board.board_frames(mesh, test_indices, radius=1.5)
     for frame, vertex_index in zip(none_z_radius_frames, test_indices, strict=True):
-        single_frame = framesh.board.board_lrf(mesh, vertex_index, radius=3.0)
+        single_frame = framesh.board.board_lrf(mesh, vertex_index, radius=1.5)
         assert np.allclose(frame, single_frame)
 
     # Compare with individual LRF computations using vertex normals
