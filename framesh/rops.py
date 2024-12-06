@@ -8,7 +8,7 @@ from .util import get_nearby_indices, round_zeros
 def rops_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
-    radius: float | None = None,
+    radius: float,
     *,
     use_vertex_normal: bool = False,
 ) -> npt.NDArray[np.float64]:
@@ -21,8 +21,7 @@ def rops_lrf(
     Args:
         mesh: The input 3D mesh.
         vertex_index: Index of the vertex for which to compute the LRF.
-        radius: Support radius for the LRF computation. If None,
-            uses the maximum distance from the vertex to any other vertex.
+        radius: Support radius for the LRF computation.
         use_vertex_normal: If True, uses the vertex normal directly as the
             z-axis of the LRF. If False, computes the z-axis from scatter matrix analysis.
 
@@ -45,13 +44,9 @@ def rops_lrf(
         (ICCSPA).
     """
     vertex = mesh.vertices[vertex_index]
-    if radius is None:
-        distances = trimesh.util.row_norm(mesh.vertices - vertex)
-        radius = np.max(distances)
-        local_triangle_indices = np.arange(len(mesh.faces))
-    else:
-        neighbors = get_nearby_indices(mesh, vertex_index, radius)
-        local_triangle_indices = np.flatnonzero(np.any(np.isin(mesh.faces, neighbors), axis=-1))
+
+    neighbors = get_nearby_indices(mesh, vertex_index, radius)
+    local_triangle_indices = np.flatnonzero(np.any(np.isin(mesh.faces, neighbors), axis=-1))
     differences = mesh.triangles[local_triangle_indices] - vertex
     area_weights = mesh.area_faces[local_triangle_indices]
     area_weights /= area_weights.sum()
@@ -98,7 +93,7 @@ def rops_lrf(
 def rops_frames(
     mesh: trimesh.Trimesh,
     vertex_indices: npt.NDArray[np.int_],
-    radius: float | None = None,
+    radius: float,
     *,
     use_vertex_normal: bool = False,
 ) -> npt.NDArray[np.float64]:
@@ -110,8 +105,7 @@ def rops_frames(
         mesh: The input 3D mesh.
         vertex_indices: Array of vertex indices for which to compute LRFs.
             Shape: (L,) where L is the number of vertices with LRFs.
-        radius: Support radius for the LRF computation. If None,
-            uses the maximum distance from each vertex to any other vertex.
+        radius: Support radius for the LRF computation.
         use_vertex_normal: If True, uses vertex normals directly as the
             z-axes of the LRFs. If False, computes z-axes from scatter matrix analysis.
 
@@ -123,74 +117,46 @@ def rops_frames(
     vertex_indices = np.atleast_1d(vertex_indices)
     n_vertices = len(vertex_indices)
 
-    if radius is None:
-        frame_vertices = mesh.vertices[vertex_indices]
-        differences = mesh.vertices - np.expand_dims(frame_vertices, axis=1)  # (L, V, 3)
-        distances = np.linalg.norm(differences, axis=-1)
-        max_radius = np.max(distances, axis=-1, keepdims=True)
-        # Compute weights
-        area_weights = mesh.area_faces / mesh.area  # (F,)
-        centers_differences = mesh.triangles_center - np.expand_dims(
-            frame_vertices, axis=1
-        )  # (L, F, 3)
-        distance_weights = np.square(
-            max_radius - np.linalg.norm(centers_differences, axis=-1)
-        )  # (L, F)
+    neighbors = get_nearby_indices(mesh, vertex_indices, radius)
+    local_triangle_indices = [
+        np.flatnonzero(np.any(np.isin(mesh.faces, vertex_neighbors), axis=-1))
+        for vertex_neighbors in neighbors
+    ]
+    triangles_counts = np.array(
+        [len(triangle_indices) for triangle_indices in local_triangle_indices]
+    )
+    flat_triangle_indices = np.concatenate(local_triangle_indices)
+    frame_indices = np.repeat(np.arange(n_vertices), triangles_counts)
+    reduce_indices = np.insert(np.cumsum(triangles_counts)[:-1], 0, 0)
+    differences = mesh.triangles[flat_triangle_indices] - np.expand_dims(
+        mesh.vertices[vertex_indices[frame_indices]], axis=1
+    )
+    area_weights = mesh.area_faces[flat_triangle_indices]
+    area_weight_normalizer = np.add.reduceat(area_weights, reduce_indices)
+    area_weights /= area_weight_normalizer[frame_indices]
+    centers_differences = (
+        mesh.triangles_center[flat_triangle_indices] - mesh.vertices[vertex_indices[frame_indices]]
+    )
+    distance_weights = np.square(
+        np.clip(radius - trimesh.util.row_norm(centers_differences), a_min=0, a_max=radius)
+    )
+    weights = area_weights * distance_weights
 
-        # Compute scatter matrix with diagonal adjustment
-        mesh_scatter = (
+    # Compute scatter matrix with diagonal adjustment
+    mesh_scatter = np.empty((n_vertices, 3, 3))
+    for frame_index in range(n_vertices):
+        mask = frame_indices == frame_index
+        mesh_scatter[frame_index] = (
             np.einsum(
-                "lfik,lfjm,ij,lf->lkm",
-                differences[:, mesh.faces],
-                differences[:, mesh.faces],
+                "sik,sjm,ij,s->km",
+                differences[mask],
+                differences[mask],
                 np.eye(3) + 1,
-                area_weights * distance_weights,
+                weights[mask],
                 optimize=True,
             )
             / 12
         )
-    else:
-        neighbors = get_nearby_indices(mesh, vertex_indices, radius)
-        local_triangle_indices = [
-            np.flatnonzero(np.any(np.isin(mesh.faces, vertex_neighbors), axis=-1))
-            for vertex_neighbors in neighbors
-        ]
-        triangles_counts = np.array(
-            [len(triangle_indices) for triangle_indices in local_triangle_indices]
-        )
-        flat_triangle_indices = np.concatenate(local_triangle_indices)
-        frame_indices = np.repeat(np.arange(n_vertices), triangles_counts)
-        reduce_indices = np.insert(np.cumsum(triangles_counts)[:-1], 0, 0)
-        differences = mesh.triangles[flat_triangle_indices] - np.expand_dims(
-            mesh.vertices[vertex_indices[frame_indices]], axis=1
-        )
-        area_weights = mesh.area_faces[flat_triangle_indices]
-        area_weight_normalizer = np.add.reduceat(area_weights, reduce_indices)
-        area_weights /= area_weight_normalizer[frame_indices]
-        centers_differences = (
-            mesh.triangles_center[flat_triangle_indices]
-            - mesh.vertices[vertex_indices[frame_indices]]
-        )
-        distance_weights = np.square(
-            np.clip(radius - trimesh.util.row_norm(centers_differences), a_min=0, a_max=radius)
-        )
-        weights = area_weights * distance_weights
-
-        # Compute scatter matrix with diagonal adjustment
-        mesh_scatter = np.empty((n_vertices, 3, 3))
-        for frame_index in range(n_vertices):
-            mask = frame_indices == frame_index
-            mesh_scatter[frame_index] = (
-                np.einsum(
-                    "sik,sjm,ij,s->km",
-                    differences[mask],
-                    differences[mask],
-                    np.eye(3) + 1,
-                    weights[mask],
-                    optimize=True,
-                )
-                / 12
-            )
 
     # Compute eigendecomposition for all vertices
     _, eigenvectors = np.linalg.eigh(mesh_scatter)
@@ -198,27 +164,16 @@ def rops_frames(
     axes = np.flip(eigenvectors, axis=-1)
 
     # Ensure consistent x-axis orientation
-    if radius is None:
-        hx = np.einsum(
-            "lfk,lk,lf->l",
-            centers_differences,
-            axes[..., 0],
-            area_weights * distance_weights,
-            optimize=True,
-        )
-        x_sign = hx < 0
-        axes[x_sign, :, 0] *= -1
-    else:
-        triangle_hx = np.einsum(
-            "mk,mk,m->m",
-            centers_differences,
-            axes[frame_indices, :, 0],
-            area_weights * distance_weights,
-            optimize=True,
-        )
-        hx = np.add.reduceat(triangle_hx, reduce_indices)
-        x_sign = hx < 0
-        axes[x_sign, :, 0] *= -1
+    triangle_hx = np.einsum(
+        "mk,mk,m->m",
+        centers_differences,
+        axes[frame_indices, :, 0],
+        area_weights * distance_weights,
+        optimize=True,
+    )
+    hx = np.add.reduceat(triangle_hx, reduce_indices)
+    x_sign = hx < 0
+    axes[x_sign, :, 0] *= -1
 
     if use_vertex_normal:
         axes[..., 2] = mesh.vertex_normals[vertex_indices]
@@ -239,7 +194,7 @@ def rops_frames(
 def rops_frames_iterative(
     mesh: trimesh.Trimesh,
     vertex_indices: npt.NDArray[np.int_],
-    radius: float | None = None,
+    radius: float,
     *,
     use_vertex_normal: bool = False,
 ) -> npt.NDArray[np.float64]:
@@ -253,8 +208,7 @@ def rops_frames_iterative(
         mesh: The input 3D mesh.
         vertex_indices: Array of vertex indices for which to compute LRFs.
             Shape: (L,) where L is the number of vertices with LRFs.
-        radius: Support radius for the LRF computation. If None,
-            uses the maximum distance from each vertex to any other vertex.
+        radius: Support radius for the LRF computation.
         use_vertex_normal: If True, uses vertex normals directly as the
             z-axes of the LRFs. If False, computes z-axes from scatter matrix analysis.
 

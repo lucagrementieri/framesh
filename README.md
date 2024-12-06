@@ -28,7 +28,7 @@ from framesh import shot_lrf
 # Load your mesh
 mesh = trimesh.load('your_mesh.obj')
 # Compute LRF for vertex index 0 with default parameters
-lrf = shot_lrf(mesh, vertex_index=0)
+lrf = shot_lrf(mesh, vertex_index=0, radius=1.0)
 # The result is a 3x3 matrix where columns are [x-axis, y-axis, z-axis]
 print(lrf)
 ```

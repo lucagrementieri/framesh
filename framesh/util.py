@@ -12,10 +12,35 @@ ABSOLUTE_TOLERANCE = 1e-12
 
 
 def round_zeros(x: npt.NDArray, atol: float = ABSOLUTE_TOLERANCE) -> npt.NDArray:
+    """Rounds values close to zero to exactly zero.
+
+    Args:
+        x: Input array to process.
+        atol: Absolute tolerance for considering a value to be zero.
+            Default is ABSOLUTE_TOLERANCE.
+
+    Returns:
+        Array with values close to zero (within atol) set to exactly zero,
+        and other values unchanged.
+    """
     return np.where(np.isclose(x, 0.0, rtol=0, atol=atol), 0, x)
 
 
 def robust_sign(x: npt.NDArray, atol: float = ABSOLUTE_TOLERANCE) -> npt.NDArray:
+    """Returns a robust sign array that handles values close to zero.
+
+    Computes the sign (-1, 0, or 1) for each element in the input array,
+    treating values within the absolute tolerance of zero as 0.
+
+    Args:
+        x: Input array to compute signs for.
+        atol: Absolute tolerance for considering a value to be zero.
+            Default is ABSOLUTE_TOLERANCE.
+
+    Returns:
+        Array of signs (-1, 0, or 1) with the same shape as the input,
+        where values within atol of zero get sign 0.
+    """
     sign_array = np.zeros_like(x)
     np.sign(x, out=sign_array, where=np.logical_not(np.isclose(x, 0, rtol=0.0, atol=atol)))
     return sign_array
@@ -108,15 +133,18 @@ def export_lrf(
 def get_nearby_indices(
     mesh: trimesh.Trimesh,
     vertex_indices: int | npt.NDArray[np.int_],
-    radius: float | npt.NDArray[np.float64] | None = None,
+    radius: float | npt.NDArray[np.float64],
+    *,
+    exclude_self: bool = False,
 ) -> npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]:
     """Gets indices of vertices within a specified radius of target vertices.
 
     Args:
         mesh: The input mesh.
         vertex_index: Index or array of indices of target vertices.
-        radius: Maximum distance(s) from target vertices. If None, returns all vertices.
-            Can be a single float or an array matching vertex_index length.
+        radius: Maximum distance(s) from target vertices. Can be a single float or an array
+            matching vertex_index length.
+        exclude_self: Whether to exclude the target vertices from the results.
 
     Returns:
         If vertex_index is an int: Array of vertex indices within radius of the target vertex.
@@ -124,16 +152,20 @@ def get_nearby_indices(
             of each target vertex.
     """
     center_vertices = mesh.vertices[vertex_indices]
-    if radius is None:
-        if center_vertices.ndim == 1:
-            return np.arange(len(mesh.vertices))
-        return [np.arange(len(mesh.vertices))] * len(center_vertices)
     neighbors = mesh.kdtree.query_ball_point(
-        center_vertices, radius, workers=-1, return_sorted=False
+        center_vertices, radius, workers=-1, return_sorted=True
     )
     np_neighbors: npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]
     if center_vertices.ndim == 1:
-        np_neighbors = np.sort(neighbors)
+        np_neighbors = np.array(neighbors)
+        if exclude_self:
+            exclude_idx = np.searchsorted(np_neighbors, vertex_indices)
+            np_neighbors = np.delete(np_neighbors, exclude_idx)
     else:
-        np_neighbors = [np.sort(n) for n in neighbors]
+        np_neighbors = [np.array(n) for n in neighbors]
+        if exclude_self:
+            np_neighbors = [
+                np.delete(n, np.searchsorted(n, vertex_index))
+                for n, vertex_index in zip(np_neighbors, vertex_indices, strict=True)
+            ]
     return np_neighbors
