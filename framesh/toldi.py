@@ -2,10 +2,9 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import ABSOLUTE_TOLERANCE, get_nearby_indices, round_zeros, timeit
+from .util import get_nearby_indices, round_zeros
 
 
-@timeit
 def toldi_lrf(
     mesh: trimesh.Trimesh,
     vertex_index: int,
@@ -61,18 +60,11 @@ def toldi_lrf(
         z_axis = round_zeros(eigenvectors[:, 0])
         if np.dot(np.sum(differences, axis=0), z_axis) > 0.0:
             z_axis *= -1
-
     projection_distances = np.dot(differences, z_axis)
     scale_factors = np.square((radius - distances) * projection_distances)
     x_axis = round_zeros(np.dot(differences.T, scale_factors))
-    y_axis = np.cross(z_axis, x_axis)
-    # TODO: apply same trick to other methods
-    if np.allclose(y_axis, 0.0, rtol=0, atol=ABSOLUTE_TOLERANCE):
-        x_axis = np.roll(z_axis, 1)
-        y_axis = np.cross(z_axis, x_axis)
-    else:
-        y_axis = trimesh.transformations.unit_vector(y_axis)
-        x_axis = np.cross(y_axis, z_axis)
+    y_axis = trimesh.transformations.unit_vector(np.cross(z_axis, x_axis))
+    x_axis = np.cross(y_axis, z_axis)
     axes = np.column_stack((x_axis, y_axis, z_axis))
     return axes
 
@@ -144,12 +136,8 @@ def toldi_frames(
     )
 
     # Compute y-axis
-    y_axes = np.cross(z_axes, x_axes)
-    null_y_mask = np.isclose(y_axes, 0.0, rtol=0, atol=ABSOLUTE_TOLERANCE).all(axis=-1)
-    x_axes[null_y_mask] = np.roll(z_axes[null_y_mask], 1, axis=1)
-    y_axes[null_y_mask] = np.cross(z_axes[null_y_mask], x_axes[null_y_mask])
-    y_axes[~null_y_mask] = trimesh.transformations.unit_vector(y_axes[~null_y_mask], axis=-1)
-    x_axes[~null_y_mask] = np.cross(y_axes[~null_y_mask], z_axes[~null_y_mask])
+    y_axes = trimesh.transformations.unit_vector(np.cross(z_axes, x_axes), axis=-1)
+    x_axes = np.cross(y_axes, z_axes)
 
     axes: npt.NDArray[np.float64] = np.stack((x_axes, y_axes, z_axes), axis=-1)
     return axes
