@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "framesh"
-version = "0.1"
+version = "0.2"
 description = "Local reference frame algorithms for meshes"
 readme = "README.md"
 requires-python = ">=3.10"
