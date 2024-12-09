@@ -4,7 +4,7 @@ import scipy.sparse
 import scipy.sparse.linalg
 import trimesh
 
-from .util import get_nearby_indices
+from .util import get_nearby_indices, round_zeros
 
 
 def face_half_cotangent(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
@@ -301,19 +301,19 @@ def gframes_lrf(
         vertex_faces = mesh.vertex_faces[vertex_index]
         vertex_faces = vertex_faces[vertex_faces != -1]
         z_axis = np.mean(mesh.face_normals[vertex_faces], axis=0)
-        z_axis /= np.linalg.norm(z_axis)
+        z_axis = round_zeros(trimesh.transformations.unit_vector(z_axis))
 
-    x_neighbors = get_nearby_indices(mesh, vertex_index, radius)
+    neighbors = get_nearby_indices(mesh, vertex_index, radius)
     if triangle_selection_method == "all":
-        triangle_indices = np.flatnonzero(np.all(np.isin(mesh.faces, x_neighbors), axis=1))
+        triangle_mask = np.all(np.isin(mesh.faces, neighbors), axis=1)
     elif triangle_selection_method == "any":
-        triangle_indices = np.unique(mesh.vertex_faces[x_neighbors])
-        triangle_indices = triangle_indices[1:] if triangle_indices[0] == -1 else triangle_indices
+        triangle_mask = np.any(np.isin(mesh.faces, neighbors), axis=1)
     else:
         raise ValueError(
             f"Invalid triangle selection method {triangle_selection_method}: "
             "it should be one of 'all' or 'any'"
         )
+    triangle_indices = np.flatnonzero(triangle_mask)
     sqrt_e_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, 0]]
     e_coefficients = np.square(sqrt_e_coefficients)
     sqrt_g_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, -1]]
@@ -338,14 +338,132 @@ def gframes_lrf(
     )
     triangle_areas = mesh.area_faces[triangle_indices]
     normalized_triangle_areas = triangle_areas / np.sum(triangle_areas)
-    x_axis = np.einsum(
-        "n,nij,njk,nk->i",
-        normalized_triangle_areas,
-        edges,
-        inverse_matrices,
-        scalar_field_differences,
+    x_axis = round_zeros(
+        np.einsum(
+            "n,nij,njk,nk->i",
+            normalized_triangle_areas,
+            edges,
+            inverse_matrices,
+            scalar_field_differences,
+        )
     )
     y_axis = trimesh.transformations.unit_vector(np.cross(z_axis, x_axis))
     x_axis = np.cross(y_axis, z_axis)
     axes: npt.NDArray[np.float64] = np.column_stack((x_axis, y_axis, z_axis))
+    return axes
+
+
+def gframes_frames(
+    mesh: trimesh.Trimesh,
+    vertex_indices: npt.NDArray[np.int_],
+    radius: float,
+    *,
+    use_vertex_normal: bool = False,
+    scalar_field: npt.NDArray[np.float64],
+    triangle_selection_method: str = "any",
+) -> npt.NDArray[np.float64]:
+    """Computes Local Reference Frames (LRFs) for multiple vertices using the GFrames method.
+
+    Vectorized version of gframes_lrf that computes LRFs for multiple vertices simultaneously.
+
+    Args:
+        mesh: The input 3D mesh.
+        vertex_indices: Array of vertex indices for which to compute LRFs.
+            Shape: (L,) where L is the number of vertices with LRFs.
+        radius: Support radius for the LRF computation.
+        use_vertex_normal: If True, uses vertex normals directly as the
+            z-axes of the LRFs. If False, computes z-axes from scatter matrix analysis.
+        scalar_field: Scalar values defined at each vertex of the mesh.
+            Shape: (V,) where V is the number of vertices in the mesh.
+        triangle_selection_method: Method for selecting triangles in neighborhood.
+            Must be either 'all' (all vertices in triangle must be in neighborhood) or
+            'any' (at least one vertex in triangle must be in neighborhood).
+
+    Returns:
+        Batch of axes of the LRFs stored in columns [x-axis, y-axis, z-axis] forming
+        right-handed coordinate systems.
+        Shape: (L, 3, 3)
+    """
+    vertex_indices = np.atleast_1d(vertex_indices)
+    n_vertices = len(vertex_indices)
+
+    if use_vertex_normal:
+        z_axes = round_zeros(mesh.vertex_normals[vertex_indices])
+    else:
+        vertex_faces = mesh.vertex_faces[vertex_indices]
+        face_normals = np.vstack((mesh.face_normals, np.zeros(3)))
+        z_axes = np.sum(face_normals[vertex_faces], axis=1)
+        z_axes = round_zeros(trimesh.transformations.unit_vector(z_axes, axis=-1))
+
+    neighbors = get_nearby_indices(mesh, vertex_indices, radius)
+    if triangle_selection_method == "all":
+        local_triangle_indices = [
+            np.flatnonzero(np.all(np.isin(mesh.faces, vertex_neighbors), axis=-1))
+            for vertex_neighbors in neighbors
+        ]
+    elif triangle_selection_method == "any":
+        local_triangle_indices = [
+            np.flatnonzero(np.any(np.isin(mesh.faces, vertex_neighbors), axis=-1))
+            for vertex_neighbors in neighbors
+        ]
+    else:
+        raise ValueError(
+            f"Invalid triangle selection method {triangle_selection_method}: "
+            "it should be one of 'all' or 'any'"
+        )
+    triangles_counts = np.array(
+        [len(triangle_indices) for triangle_indices in local_triangle_indices]
+    )
+    flat_triangle_indices = np.concatenate(local_triangle_indices)
+    frame_indices = np.repeat(np.arange(n_vertices), triangles_counts)
+    reduce_indices = np.insert(np.cumsum(triangles_counts)[:-1], 0, 0)
+
+    sqrt_e_coefficients = mesh.edges_unique_length[
+        mesh.faces_unique_edges[flat_triangle_indices, 0]
+    ]
+    e_coefficients = np.square(sqrt_e_coefficients)
+    sqrt_g_coefficients = mesh.edges_unique_length[
+        mesh.faces_unique_edges[flat_triangle_indices, -1]
+    ]
+    g_coefficients = np.square(sqrt_g_coefficients)
+    f_coefficients = (
+        sqrt_e_coefficients
+        * sqrt_g_coefficients
+        * np.cos(mesh.face_angles[flat_triangle_indices, 0])
+    )
+    determinants = e_coefficients * g_coefficients - np.square(f_coefficients)
+    inverse_matrices = (
+        np.array([[g_coefficients, -f_coefficients], [-f_coefficients, e_coefficients]])
+        / determinants
+    )
+    inverse_matrices = np.moveaxis(inverse_matrices, -1, 0)
+
+    triangles = mesh.faces[flat_triangle_indices]
+    edges = np.swapaxes(mesh.vertices[triangles[:, 1:]] - mesh.vertices[triangles[:, [0]]], 1, 2)
+    scalar_field_differences = np.column_stack(
+        [
+            scalar_field[triangles[:, 1]] - scalar_field[triangles[:, 0]],
+            scalar_field[triangles[:, 2]] - scalar_field[triangles[:, 0]],
+        ]
+    )
+    triangle_areas = mesh.area_faces[flat_triangle_indices]
+    triangle_areas_normalizer = np.add.reduceat(triangle_areas, reduce_indices)
+    normalized_triangle_areas = triangle_areas / triangle_areas_normalizer[frame_indices]
+    x_axes = round_zeros(
+        np.add.reduceat(
+            np.einsum(
+                "n,nij,njk,nk->ni",
+                normalized_triangle_areas,
+                edges,
+                inverse_matrices,
+                scalar_field_differences,
+            ),
+            reduce_indices,
+        )
+    )
+
+    y_axes = trimesh.transformations.unit_vector(np.cross(z_axes, x_axes), axis=-1)
+    x_axes = np.cross(y_axes, z_axes)
+
+    axes: npt.NDArray[np.float64] = np.stack((x_axes, y_axes, z_axes), axis=-1)
     return axes
