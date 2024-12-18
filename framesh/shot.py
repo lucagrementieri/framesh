@@ -138,7 +138,6 @@ def shot_frames(
     _, eigenvectors = np.linalg.eigh(weighted_covariance)
     eigenvectors = round_zeros(eigenvectors)
     valid_axes = np.flip(eigenvectors, axis=-1)
-    print(valid_axes)
 
     # Ensure consistent x-axis orientation
     x_sign_votes = robust_sign(np.sum(differences * valid_axes[frame_indices, :, 0], axis=-1))
