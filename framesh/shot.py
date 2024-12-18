@@ -111,11 +111,11 @@ def shot_frames(
     neighbors = get_nearby_indices(mesh, vertex_indices, radius, exclude_self=True)
     neighbors_counts = np.array([len(n) for n in neighbors])
     axes = np.full((n_vertices, 3, 3), np.nan)
+    if use_vertex_normal:
+        axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
 
     valid_neighborhoods = neighbors_counts > 0
     if not np.any(valid_neighborhoods):
-        if use_vertex_normal:
-            axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
         return axes
 
     vertex_indices = vertex_indices[valid_neighborhoods]
@@ -145,7 +145,7 @@ def shot_frames(
     x_sign = np.add.reduceat(x_sign_votes, reduce_indices) < 0
     valid_axes[x_sign, :, 0] *= -1
     if use_vertex_normal:
-        axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
+        valid_axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
         valid_axes[..., 1] = trimesh.transformations.unit_vector(
             np.cross(valid_axes[..., 2], valid_axes[..., 0]), axis=-1
         )
