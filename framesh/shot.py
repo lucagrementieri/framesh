@@ -46,6 +46,13 @@ def shot_lrf(
     """
     vertex = mesh.vertices[vertex_index]
     neighbors = get_nearby_indices(mesh, vertex_index, radius, exclude_self=True)
+    assert isinstance(neighbors, np.ndarray)
+    if neighbors.size == 0:
+        invalid_axes = np.full((3, 3), np.nan)
+        if use_vertex_normal:
+            invalid_axes[:, 2] = round_zeros(mesh.vertex_normals[vertex_index])
+        return invalid_axes
+
     differences = mesh.vertices[neighbors] - vertex
     distances = trimesh.util.row_norm(differences)
     scale_factors = radius - distances
@@ -103,6 +110,19 @@ def shot_frames(
 
     neighbors = get_nearby_indices(mesh, vertex_indices, radius, exclude_self=True)
     neighbors_counts = np.array([len(n) for n in neighbors])
+    axes = np.full((n_vertices, 3, 3), np.nan)
+
+    valid_neighborhoods = neighbors_counts > 0
+    if not np.any(valid_neighborhoods):
+        if use_vertex_normal:
+            axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
+        return axes
+
+    vertex_indices = vertex_indices[valid_neighborhoods]
+    frame_vertices = frame_vertices[valid_neighborhoods]
+    n_vertices = len(vertex_indices)
+    neighbors_counts = neighbors_counts[valid_neighborhoods]
+
     flat_neighbors = np.concatenate(neighbors)
     frame_indices = np.repeat(np.arange(n_vertices), neighbors_counts)
     differences = mesh.vertices[flat_neighbors] - frame_vertices[frame_indices]  # (M, 3)
@@ -117,25 +137,27 @@ def shot_frames(
     # Compute eigendecomposition for all vertices
     _, eigenvectors = np.linalg.eigh(weighted_covariance)
     eigenvectors = round_zeros(eigenvectors)
-    axes = np.flip(eigenvectors, axis=-1)
+    valid_axes = np.flip(eigenvectors, axis=-1)
+    print(valid_axes)
 
     # Ensure consistent x-axis orientation
-    x_sign_votes = robust_sign(np.sum(differences * axes[frame_indices, :, 0], axis=-1))
+    x_sign_votes = robust_sign(np.sum(differences * valid_axes[frame_indices, :, 0], axis=-1))
     x_sign = np.add.reduceat(x_sign_votes, reduce_indices) < 0
-    axes[x_sign, :, 0] *= -1
+    valid_axes[x_sign, :, 0] *= -1
     if use_vertex_normal:
         axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
-        axes[..., 1] = trimesh.transformations.unit_vector(
-            np.cross(axes[..., 2], axes[..., 0]), axis=-1
+        valid_axes[..., 1] = trimesh.transformations.unit_vector(
+            np.cross(valid_axes[..., 2], valid_axes[..., 0]), axis=-1
         )
-        axes[..., 0] = np.cross(axes[..., 1], axes[..., 2])
+        valid_axes[..., 0] = np.cross(valid_axes[..., 1], valid_axes[..., 2])
     else:
         # Ensure consistent z-axis orientation with vertex normals
-        z_dots = np.sum(mesh.vertex_normals[vertex_indices] * axes[..., 2], axis=-1)
+        z_dots = np.sum(mesh.vertex_normals[vertex_indices] * valid_axes[..., 2], axis=-1)
         z_sign = z_dots < 0
-        axes[z_sign, :, 2] *= -1
+        valid_axes[z_sign, :, 2] *= -1
 
         # Ensure right-handed coordinate system
-        y_sign = np.linalg.det(axes) < 0
-        axes[y_sign, :, 1] *= -1
+        y_sign = np.linalg.det(valid_axes) < 0
+        valid_axes[y_sign, :, 1] *= -1
+    axes[valid_neighborhoods] = valid_axes
     return axes

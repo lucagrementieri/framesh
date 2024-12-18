@@ -56,12 +56,18 @@ def board_lrf(
         z_axis = round_zeros(mesh.vertex_normals[vertex_index])
     else:
         z_neighbors = get_nearby_indices(mesh, vertex_index, z_radius)
+        assert isinstance(z_neighbors, np.ndarray)
+        if z_neighbors.size < 2:
+            return np.full((3, 3), np.nan)
         _, z_axis = trimesh.points.plane_fit(mesh.vertices[z_neighbors])
         z_axis = round_zeros(z_axis)
         if np.dot(z_axis, mesh.vertex_normals[z_neighbors].sum(axis=0)) < 0.0:
             z_axis *= -1
 
     x_neighbors = get_nearby_indices(mesh, vertex_index, radius, exclude_self=True)
+    assert isinstance(x_neighbors, np.ndarray)
+    if x_neighbors.size == 0:
+        return np.column_stack((np.full((3, 2), np.nan), z_axis))
     distances = trimesh.util.row_norm(mesh.vertices[x_neighbors] - vertex)
     exclude_radius = EXCLUDE_RADIUS_COEFFICIENT * radius
     radius_mask = distances > exclude_radius
@@ -106,24 +112,47 @@ def board_frames(
     frame_vertices = mesh.vertices[vertex_indices]
     n_vertices = len(vertex_indices)
 
+    axes = np.full((n_vertices, 3, 3), np.nan)
+    valid_z_neighborhoods = np.ones(n_vertices, dtype=np.bool_)
+
     if z_radius is None:
         z_radius = radius
     if use_vertex_normal:
         z_neighbors = None
-        z_axes = round_zeros(mesh.vertex_normals[vertex_indices])
+        axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
     else:
         z_neighbors = get_nearby_indices(mesh, vertex_indices, z_radius)
-        z_axes = np.zeros((n_vertices, 3))
+        assert isinstance(z_neighbors, list)
         for i, neighbors in enumerate(z_neighbors):
-            _, z_axes[i] = trimesh.points.plane_fit(mesh.vertices[neighbors])
-            z_axes[i] = round_zeros(z_axes[i])
-            if np.dot(z_axes[i], mesh.vertex_normals[neighbors].sum(axis=0)) < 0.0:
-                z_axes[i] *= -1
+            if len(neighbors) < 2:
+                valid_z_neighborhoods[i] = False
+                continue
+            _, z_axis = trimesh.points.plane_fit(mesh.vertices[neighbors])
+            axes[i, :, 2] = round_zeros(z_axis)
+            if np.dot(axes[i, :, 2], mesh.vertex_normals[neighbors].sum(axis=0)) < 0.0:
+                axes[i, :, 2] *= -1
 
-    x_neighbors = get_nearby_indices(mesh, vertex_indices, radius, exclude_self=True)
+    if not np.any(valid_z_neighborhoods):
+        return axes
+
+    x_neighbors = get_nearby_indices(
+        mesh, vertex_indices[valid_z_neighborhoods], radius, exclude_self=True
+    )
+    assert isinstance(x_neighbors, list)
     neighbors_counts = np.array([len(n) for n in x_neighbors])
+    valid_neighborhoods = np.copy(valid_z_neighborhoods)
+    valid_neighborhoods[valid_z_neighborhoods] = neighbors_counts > 0
+
+    if not np.any(valid_neighborhoods):
+        return axes
+
+    vertex_indices = vertex_indices[valid_neighborhoods]
+    frame_vertices = frame_vertices[valid_neighborhoods]
+    n_vertices = len(vertex_indices)
+    valid_axes = np.copy(axes[valid_neighborhoods])
+
     flat_neighbors = np.concatenate(x_neighbors)
-    frame_indices = np.repeat(np.arange(n_vertices), neighbors_counts)
+    frame_indices = np.repeat(np.arange(n_vertices), neighbors_counts[neighbors_counts > 0])
     differences = mesh.vertices[flat_neighbors] - frame_vertices[frame_indices]  # (M, 3)
     distances = trimesh.util.row_norm(differences)
     exclude_radius = EXCLUDE_RADIUS_COEFFICIENT * radius
@@ -142,14 +171,18 @@ def board_frames(
     assert np.array_equal(unique_frame_indices, np.arange(n_vertices))
     assert np.array_equal(frame_indices, np.repeat(np.arange(n_vertices), x_neighbors_counts))
     reduce_indices = np.insert(np.cumsum(x_neighbors_counts)[:-1], 0, 0)
-    z_dots = np.abs(np.sum(mesh.vertex_normals[x_neighbors] * z_axes[frame_indices], axis=-1))
+    z_dots = np.abs(
+        np.sum(mesh.vertex_normals[x_neighbors] * valid_axes[frame_indices, :, 2], axis=-1)
+    )
     x_point_value = np.minimum.reduceat(z_dots, reduce_indices)
     x_point_mask = x_point_value[frame_indices] == z_dots
     x_point_index = np.flatnonzero(x_point_mask)
     if x_point_index.size > n_vertices:
         x_point_index = x_point_index[np.unique(frame_indices[x_point_index], return_index=True)[1]]
     x_vector = mesh.vertices[x_neighbors[x_point_index]] - frame_vertices
-    y_axes = trimesh.transformations.unit_vector(np.cross(z_axes, x_vector), axis=-1)
-    x_axes = np.cross(y_axes, z_axes)
-    axes: npt.NDArray[np.float64] = np.stack((x_axes, y_axes, z_axes), axis=-1)
+    valid_axes[..., 1] = trimesh.transformations.unit_vector(
+        np.cross(valid_axes[..., 2], x_vector), axis=-1
+    )
+    valid_axes[..., 0] = np.cross(valid_axes[..., 1], valid_axes[..., 2])
+    axes[valid_neighborhoods] = valid_axes
     return axes
