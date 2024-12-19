@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import numpy.typing as npt
 import trimesh
+import networkx as nx
 from scipy.spatial import KDTree
 
 DEFAULT_COLORS = np.eye(3)
@@ -142,14 +143,14 @@ def get_nearby_indices(
 
     Args:
         mesh: The input mesh.
-        vertex_index: Index or array of indices of target vertices.
+        vertex_indices: Index or array of indices of target vertices.
         radius: Maximum distance(s) from target vertices. Can be a single float or an array
             matching vertex_index length.
         exclude_self: Whether to exclude the target vertices from the results.
 
     Returns:
-        If vertex_index is an int: Array of vertex indices within radius of the target vertex.
-        If vertex_index is an array: List of arrays containing vertex indices within radius
+        If vertex_indices is an int: Array of vertex indices within radius of the target vertex.
+        If vertex_indices is an array: List of arrays containing vertex indices within radius
             of each target vertex.
     """
     center_vertices = mesh.vertices[vertex_indices]
@@ -192,14 +193,14 @@ def get_nearby_face_indices(
 
     Args:
         mesh: The input mesh.
-        vertex_index: Index or array of indices of target vertices.
+        vertex_indices: Index or array of indices of target vertices.
         radius: Maximum distance(s) from target vertices. Can be a single float or an array
             matching vertex_index length.
         exclude_self: Whether to exclude the target vertices from the results.
 
     Returns:
-        If vertex_index is an int: Array of face indices within radius of the target vertex.
-        If vertex_index is an array: List of arrays containing face indices within radius
+        If vertex_indices is an int: Array of face indices within radius of the target vertex.
+        If vertex_indices is an array: List of arrays containing face indices within radius
             of each target vertex.
     """
     center_vertices = mesh.vertices[vertex_indices]
@@ -227,15 +228,65 @@ def get_connected_nearby_indices(
 
     Args:
         mesh: The input mesh.
-        vertex_index: Index or array of indices of target vertices.
+        vertex_indices: Index or array of indices of target vertices.
         radius: Maximum distance(s) from target vertices. Can be a single float or an array
             matching vertex_index length.
         exclude_self: Whether to exclude the target vertices from the results.
 
     Returns:
-        If vertex_index is an int: Array of connected vertex indices within radius of the target
+        If vertex_indices is an int: Array of connected vertex indices within radius of the target
             vertex.
-        If vertex_index is an array: List of arrays containing connected vertex indices within
+        If vertex_indices is an array: List of arrays containing connected vertex indices within
             radius of each target vertex.
     """
-    print("TODO")
+    is_single_index = not hasattr(vertex_indices, "__len__")
+    np_vertex_indices = np.array([vertex_indices]) if is_single_index else np.array(vertex_indices)
+    center_vertices = mesh.vertices[np_vertex_indices]
+    neighbors = mesh.kdtree.query_ball_point(center_vertices, radius, workers=-1)
+    connected_indices = []
+    for vertex_index, vertex_neighbors in zip(np_vertex_indices, neighbors, strict=True):
+        neighborhood_edges = mesh.edges_unique[
+            np.all(np.isin(mesh.edges_unique, vertex_neighbors), axis=1)
+        ]
+        neighborhood_graph = nx.from_edgelist(neighborhood_edges)
+        connected_vertex_indices = np.array(
+            sorted(nx.node_connected_component(neighborhood_graph, int(vertex_index)))
+        )
+        if exclude_self:
+            connected_vertex_indices = np.delete(
+                connected_vertex_indices, np.searchsorted(connected_vertex_indices, vertex_index)
+            )
+        connected_indices.append(connected_vertex_indices)
+    if is_single_index:
+        return connected_indices[0]
+    return connected_indices
+
+
+def get_connected_nearby_face_indices(
+    mesh: trimesh.Trimesh,
+    vertex_indices: int | npt.NDArray[np.int_],
+    radius: float | npt.NDArray[np.float64],
+) -> npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]:
+    """Gets indices of faces within a specified radius of target vertices and connected to them.
+
+    Args:
+        mesh: The input mesh.
+        vertex_indices: Index or array of indices of target vertices.
+        radius: Maximum distance(s) from target vertices. Can be a single float or an array
+            matching vertex_index length.
+
+    Returns:
+        If vertex_indices is an int: Array of connected face indices within radius of the target
+            vertex.
+        If vertex_indices is an array: List of arrays containing connected face indices within
+            radius of each target vertex.
+    """
+    is_single_index = not hasattr(vertex_indices, "__len__")
+    np_vertex_indices = np.array([vertex_indices]) if is_single_index else np.array(vertex_indices)
+    connected_face_indices = [
+        np.flatnonzero(np.any(np.isin(mesh.faces, connected_indices), axis=-1))
+        for connected_indices in get_connected_nearby_indices(mesh, np_vertex_indices, radius)
+    ]
+    if is_single_index:
+        return connected_face_indices[0]
+    return connected_face_indices

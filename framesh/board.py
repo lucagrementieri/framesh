@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import get_nearby_indices, round_zeros
+from .util import get_connected_nearby_indices, round_zeros
 
 EXCLUDE_RADIUS_COEFFICIENT = 0.85
 
@@ -55,7 +55,7 @@ def board_lrf(
         z_neighbors = None
         z_axis = round_zeros(mesh.vertex_normals[vertex_index])
     else:
-        z_neighbors = get_nearby_indices(mesh, vertex_index, z_radius)
+        z_neighbors = get_connected_nearby_indices(mesh, vertex_index, z_radius)
         assert isinstance(z_neighbors, np.ndarray)
         if z_neighbors.size < 2:
             return np.full((3, 3), np.nan)
@@ -64,7 +64,7 @@ def board_lrf(
         if np.dot(z_axis, mesh.vertex_normals[z_neighbors].sum(axis=0)) < 0.0:
             z_axis *= -1
 
-    x_neighbors = get_nearby_indices(mesh, vertex_index, radius, exclude_self=True)
+    x_neighbors = get_connected_nearby_indices(mesh, vertex_index, radius, exclude_self=True)
     assert isinstance(x_neighbors, np.ndarray)
     if x_neighbors.size == 0:
         return np.column_stack((np.full((3, 2), np.nan), z_axis))
@@ -121,7 +121,7 @@ def board_frames(
         z_neighbors = None
         axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
     else:
-        z_neighbors = get_nearby_indices(mesh, vertex_indices, z_radius)
+        z_neighbors = get_connected_nearby_indices(mesh, vertex_indices, z_radius)
         assert isinstance(z_neighbors, list)
         for i, neighbors in enumerate(z_neighbors):
             if len(neighbors) < 2:
@@ -135,7 +135,7 @@ def board_frames(
     if not np.any(valid_z_neighborhoods):
         return axes
 
-    x_neighbors = get_nearby_indices(
+    x_neighbors = get_connected_nearby_indices(
         mesh, vertex_indices[valid_z_neighborhoods], radius, exclude_self=True
     )
     assert isinstance(x_neighbors, list)

@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import get_nearby_face_indices, round_zeros
+from .util import get_connected_nearby_face_indices, round_zeros
 
 
 def rops_lrf(
@@ -45,7 +45,7 @@ def rops_lrf(
     """
     vertex = mesh.vertices[vertex_index]
 
-    local_triangle_indices = get_nearby_face_indices(mesh, vertex_index, radius)
+    local_triangle_indices = get_connected_nearby_face_indices(mesh, vertex_index, radius)
     differences = mesh.triangles[local_triangle_indices] - vertex
     area_weights = mesh.area_faces[local_triangle_indices]
     area_weights /= area_weights.sum()
@@ -116,7 +116,7 @@ def rops_frames(
     vertex_indices = np.atleast_1d(vertex_indices)
     n_vertices = len(vertex_indices)
 
-    local_triangle_indices = get_nearby_face_indices(mesh, vertex_indices, radius)
+    local_triangle_indices = get_connected_nearby_face_indices(mesh, vertex_indices, radius)
     triangles_counts = np.array(
         [len(triangle_indices) for triangle_indices in local_triangle_indices]
     )

@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import get_nearby_indices, robust_sign, round_zeros
+from .util import get_connected_nearby_indices, robust_sign, round_zeros
 
 
 def shot_lrf(
@@ -45,7 +45,7 @@ def shot_lrf(
         European Conference on Computer Vision (ECCV).
     """
     vertex = mesh.vertices[vertex_index]
-    neighbors = get_nearby_indices(mesh, vertex_index, radius, exclude_self=True)
+    neighbors = get_connected_nearby_indices(mesh, vertex_index, radius, exclude_self=True)
     assert isinstance(neighbors, np.ndarray)
     if neighbors.size == 0:
         invalid_axes = np.full((3, 3), np.nan)
@@ -108,7 +108,7 @@ def shot_frames(
     frame_vertices = mesh.vertices[vertex_indices]
     n_vertices = len(vertex_indices)
 
-    neighbors = get_nearby_indices(mesh, vertex_indices, radius, exclude_self=True)
+    neighbors = get_connected_nearby_indices(mesh, vertex_indices, radius, exclude_self=True)
     neighbors_counts = np.array([len(n) for n in neighbors])
     axes = np.full((n_vertices, 3, 3), np.nan)
     if use_vertex_normal:

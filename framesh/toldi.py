@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import trimesh
 
-from .util import get_nearby_indices, round_zeros
+from .util import get_connected_nearby_indices, round_zeros
 
 
 def toldi_lrf(
@@ -43,7 +43,7 @@ def toldi_lrf(
         Pattern Recognition, 65, 175-187.
     """
     vertex = mesh.vertices[vertex_index]
-    neighbor_indices = get_nearby_indices(mesh, vertex_index, radius, exclude_self=True)
+    neighbor_indices = get_connected_nearby_indices(mesh, vertex_index, radius, exclude_self=True)
     differences = mesh.vertices[neighbor_indices] - vertex
     distances = trimesh.util.row_norm(differences)
 
@@ -51,7 +51,7 @@ def toldi_lrf(
         z_axis = round_zeros(mesh.vertex_normals[vertex_index])
     else:
         z_radius = radius / 3.0
-        z_neighbors = get_nearby_indices(mesh, vertex_index, z_radius)
+        z_neighbors = get_connected_nearby_indices(mesh, vertex_index, z_radius)
         z_vertices = mesh.vertices[z_neighbors]
         z_centroid = np.mean(z_vertices, axis=0)
         centroid_differences = z_vertices - z_centroid
@@ -97,7 +97,7 @@ def toldi_frames(
     frame_vertices = mesh.vertices[vertex_indices]
     n_vertices = len(vertex_indices)
 
-    neighbors = get_nearby_indices(mesh, vertex_indices, radius, exclude_self=True)
+    neighbors = get_connected_nearby_indices(mesh, vertex_indices, radius, exclude_self=True)
     neighbors_counts = np.array([len(n) for n in neighbors])
     flat_neighbors = np.concatenate(neighbors)
     frame_indices = np.repeat(np.arange(n_vertices), neighbors_counts)
@@ -110,7 +110,7 @@ def toldi_frames(
         z_axes = round_zeros(mesh.vertex_normals[vertex_indices])
     else:
         z_radius = radius / 3.0
-        z_neighbors = get_nearby_indices(mesh, vertex_indices, z_radius)
+        z_neighbors = get_connected_nearby_indices(mesh, vertex_indices, z_radius)
         z_neighbors_counts = np.array([len(n) for n in z_neighbors])
         flat_z_neighbors = np.concatenate(z_neighbors)
         z_frame_indices = np.repeat(np.arange(n_vertices), z_neighbors_counts)

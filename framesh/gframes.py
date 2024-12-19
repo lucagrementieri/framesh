@@ -4,7 +4,7 @@ import scipy.sparse
 import scipy.sparse.linalg
 import trimesh
 
-from .util import get_nearby_face_indices, round_zeros
+from .util import get_connected_nearby_face_indices, round_zeros
 
 
 def face_half_cotangent(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
@@ -299,7 +299,7 @@ def gframes_lrf(
         z_axis = np.mean(mesh.face_normals[vertex_faces], axis=0)
         z_axis = round_zeros(trimesh.transformations.unit_vector(z_axis))
 
-    triangle_indices = get_nearby_face_indices(mesh, vertex_index, radius)
+    triangle_indices = get_connected_nearby_face_indices(mesh, vertex_index, radius)
     sqrt_e_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, 0]]
     e_coefficients = np.square(sqrt_e_coefficients)
     sqrt_g_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, -1]]
@@ -377,7 +377,7 @@ def gframes_frames(
         z_axes = np.sum(face_normals[vertex_faces], axis=1)
         z_axes = round_zeros(trimesh.transformations.unit_vector(z_axes, axis=-1))
 
-    local_triangle_indices = get_nearby_face_indices(mesh, vertex_indices, radius)
+    local_triangle_indices = get_connected_nearby_face_indices(mesh, vertex_indices, radius)
     triangles_counts = np.array(
         [len(triangle_indices) for triangle_indices in local_triangle_indices]
     )
