@@ -174,6 +174,7 @@ def get_nearby_indices(
         assert not isinstance(vertex_indices, int)
         mesh_neighbors = [np.array(n) for n in neighbors]
         if exclude_self:
+            assert isinstance(self_indices, np.ndarray)
             mesh_neighbors = [
                 np.delete(n, np.searchsorted(n, self_index))
                 for n, self_index in zip(mesh_neighbors, self_indices, strict=True)
