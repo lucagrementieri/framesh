@@ -153,14 +153,12 @@ def get_nearby_indices(
             of each target vertex.
     """
     center_vertices = mesh.vertices[vertex_indices]
-    row_indices, _ = trimesh.grouping.unique_rows(mesh.vertices, digits=6)
+    row_indices, _ = trimesh.grouping.unique_rows(mesh.vertices)
     unique_vertices = mesh.vertices[row_indices]
     kdtree = KDTree(unique_vertices)
     neighbors = kdtree.query_ball_point(center_vertices, radius, workers=-1, return_sorted=True)
     if exclude_self:
-        d, self_indices = kdtree.query(
-            center_vertices, distance_upper_bound=ABSOLUTE_TOLERANCE, workers=-1
-        )
+        d, self_indices = kdtree.query(center_vertices, distance_upper_bound=1, workers=-1)
         assert np.allclose(d, 0.0)
     np_neighbors: npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]
     if center_vertices.ndim == 1:
