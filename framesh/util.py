@@ -181,3 +181,28 @@ def get_nearby_indices(
             ]
         mesh_neighbors = [np.sort(row_indices[n]) for n in mesh_neighbors]
     return mesh_neighbors
+
+
+def get_connected_nearby_indices(
+    mesh: trimesh.Trimesh,
+    vertex_indices: int | npt.NDArray[np.int_],
+    radius: float | npt.NDArray[np.float64],
+    *,
+    exclude_self: bool = False,
+) -> npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]:
+    """Gets indices of vertices within a specified radius of target vertices and connected to them.
+
+    Args:
+        mesh: The input mesh.
+        vertex_index: Index or array of indices of target vertices.
+        radius: Maximum distance(s) from target vertices. Can be a single float or an array
+            matching vertex_index length.
+        exclude_self: Whether to exclude the target vertices from the results.
+
+    Returns:
+        If vertex_index is an int: Array of connected vertex indices within radius of the target
+            vertex.
+        If vertex_index is an array: List of arrays containing connected vertex indices within
+            radius of each target vertex.
+    """
+    print("TODO")
