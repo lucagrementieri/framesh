@@ -158,20 +158,25 @@ def get_nearby_indices(
     kdtree = KDTree(unique_vertices)
     neighbors = kdtree.query_ball_point(center_vertices, radius, workers=-1, return_sorted=True)
     if exclude_self:
-        d, self_indices = kdtree.query(center_vertices, distance_upper_bound=1, workers=-1)
+        d, self_indices = kdtree.query(
+            center_vertices, distance_upper_bound=ABSOLUTE_TOLERANCE, workers=-1
+        )
         assert np.allclose(d, 0.0)
-    np_neighbors: npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]
+    mesh_neighbors: npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]
     if center_vertices.ndim == 1:
-        np_neighbors = np.array(neighbors)
+        mesh_neighbors = np.array(neighbors)
         if exclude_self:
-            exclude_idx = np.searchsorted(np_neighbors, self_indices)
-            np_neighbors = np.delete(np_neighbors, exclude_idx)
+            mesh_neighbors = np.delete(
+                mesh_neighbors, np.searchsorted(mesh_neighbors, self_indices)
+            )
+        mesh_neighbors = np.sort(row_indices[mesh_neighbors])
     else:
         assert not isinstance(vertex_indices, int)
-        np_neighbors = [np.array(n) for n in neighbors]
+        mesh_neighbors = [np.array(n) for n in neighbors]
         if exclude_self:
-            np_neighbors = [
+            mesh_neighbors = [
                 np.delete(n, np.searchsorted(n, self_index))
-                for n, self_index in zip(np_neighbors, self_indices, strict=True)
+                for n, self_index in zip(mesh_neighbors, self_indices, strict=True)
             ]
-    return np_neighbors
+        mesh_neighbors = [np.sort(row_indices[n]) for n in mesh_neighbors]
+    return mesh_neighbors

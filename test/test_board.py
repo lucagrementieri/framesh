@@ -16,7 +16,7 @@ def test_board_lrf(lrf_input: str, request: pytest.FixtureRequest) -> None:
     assert np.isclose(np.linalg.det(none_z_radius_axes), 1.0)
 
     axes_with_normal = framesh.board.board_lrf(
-        mesh, vertex_index, radius=2.0, use_vertex_normal=True, z_radius=1.0
+        mesh, vertex_index, radius=2.0, use_vertex_normal=True
     )
     assert np.allclose(np.dot(axes_with_normal.T, axes_with_normal), np.eye(3))
     assert np.isclose(np.linalg.det(axes_with_normal), 1.0)
@@ -41,10 +41,10 @@ def test_board_frames(lrf_input: str, request: pytest.FixtureRequest) -> None:
 
     # Compare with individual LRF computations using vertex normals
     frames_with_normal = framesh.board.board_frames(
-        mesh, test_indices, radius=2.0, use_vertex_normal=True, z_radius=1.0
+        mesh, test_indices, radius=2.0, use_vertex_normal=True
     )
     for frame, vertex_index in zip(frames_with_normal, test_indices, strict=True):
         single_frame = framesh.board.board_lrf(
-            mesh, vertex_index, radius=2.0, use_vertex_normal=True, z_radius=1.0
+            mesh, vertex_index, radius=2.0, use_vertex_normal=True
         )
         assert np.allclose(frame, single_frame)
