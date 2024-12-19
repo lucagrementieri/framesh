@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import numpy.typing as npt
 import trimesh
+from scipy.spatial import KDTree
 
 DEFAULT_COLORS = np.eye(3)
 ABSOLUTE_TOLERANCE = 1e-12
@@ -152,13 +153,15 @@ def get_nearby_indices(
             of each target vertex.
     """
     center_vertices = mesh.vertices[vertex_indices]
-    neighbors = mesh.kdtree.query_ball_point(
-        center_vertices, radius, workers=-1, return_sorted=True
-    )
+    row_indices, _ = trimesh.grouping.unique_rows(mesh.vertices, digits=6)
+    unique_vertices = mesh.vertices[row_indices]
+    kdtree = KDTree(unique_vertices)
+    neighbors = kdtree.query_ball_point(center_vertices, radius, workers=-1, return_sorted=True)
     if exclude_self:
-        self_indices = mesh.kdtree.query_ball_point(
-            center_vertices, ABSOLUTE_TOLERANCE, workers=-1, return_sorted=True
+        d, self_indices = kdtree.query(
+            center_vertices, distance_upper_bound=ABSOLUTE_TOLERANCE, workers=-1
         )
+        assert np.allclose(d, 0.0)
     np_neighbors: npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]
     if center_vertices.ndim == 1:
         np_neighbors = np.array(neighbors)
@@ -170,7 +173,7 @@ def get_nearby_indices(
         np_neighbors = [np.array(n) for n in neighbors]
         if exclude_self:
             np_neighbors = [
-                np.delete(n, np.searchsorted(n, vertex_self_indices))
-                for n, vertex_self_indices in zip(np_neighbors, self_indices, strict=True)
+                np.delete(n, np.searchsorted(n, self_index))
+                for n, self_index in zip(np_neighbors, self_indices, strict=True)
             ]
     return np_neighbors

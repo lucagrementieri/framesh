@@ -154,7 +154,7 @@ def flare_frames(
     valid_axes = np.copy(axes[valid_neighborhoods])
 
     flat_neighbors = np.concatenate(x_neighbors)
-    frame_indices = np.repeat(np.arange(n_vertices), neighbors_counts)
+    frame_indices = np.repeat(np.arange(n_vertices), neighbors_counts[neighbors_counts > 0])
     differences = mesh.vertices[flat_neighbors] - frame_vertices[frame_indices]  # (M, 3)
     distances = trimesh.util.row_norm(differences)
     exclude_radius = EXCLUDE_RADIUS_COEFFICIENT * radius
@@ -167,7 +167,10 @@ def flare_frames(
     frame_indices = frame_indices[selected_indices]
     x_neighbors = flat_neighbors[selected_indices]
 
-    _, x_neighbors_counts = trimesh.grouping.unique_bincount(frame_indices, return_counts=True)
+    unique_frame_indices, x_neighbors_counts = trimesh.grouping.unique_bincount(
+        frame_indices, return_counts=True
+    )
+    assert np.array_equal(unique_frame_indices, np.arange(n_vertices))
     assert np.array_equal(frame_indices, np.repeat(np.arange(n_vertices), x_neighbors_counts))
     reduce_indices = np.insert(np.cumsum(x_neighbors_counts)[:-1], 0, 0)
     z_dots = np.sum(mesh.vertices[x_neighbors] * valid_axes[frame_indices, :, 2], axis=-1)
