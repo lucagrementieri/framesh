@@ -155,18 +155,22 @@ def get_nearby_indices(
     neighbors = mesh.kdtree.query_ball_point(
         center_vertices, radius, workers=-1, return_sorted=True
     )
+    if exclude_self:
+        self_indices = mesh.kdtree.query_ball_point(
+            center_vertices, ABSOLUTE_TOLERANCE, workers=-1, return_sorted=True
+        )
     np_neighbors: npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]
     if center_vertices.ndim == 1:
         np_neighbors = np.array(neighbors)
         if exclude_self:
-            exclude_idx = np.searchsorted(np_neighbors, vertex_indices)
+            exclude_idx = np.searchsorted(np_neighbors, self_indices)
             np_neighbors = np.delete(np_neighbors, exclude_idx)
     else:
         assert not isinstance(vertex_indices, int)
         np_neighbors = [np.array(n) for n in neighbors]
         if exclude_self:
             np_neighbors = [
-                np.delete(n, np.searchsorted(n, vertex_index))
-                for n, vertex_index in zip(np_neighbors, vertex_indices, strict=True)
+                np.delete(n, np.searchsorted(n, vertex_self_indices))
+                for n, vertex_self_indices in zip(np_neighbors, self_indices, strict=True)
             ]
     return np_neighbors
