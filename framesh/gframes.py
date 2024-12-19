@@ -4,7 +4,7 @@ import scipy.sparse
 import scipy.sparse.linalg
 import trimesh
 
-from .util import get_nearby_indices, round_zeros
+from .util import get_nearby_face_indices, round_zeros
 
 
 def face_half_cotangent(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
@@ -256,7 +256,6 @@ def gframes_lrf(
     *,
     use_vertex_normal: bool = False,
     scalar_field: npt.NDArray[np.float64],
-    triangle_selection_method: str = "any",
 ) -> npt.NDArray[np.float64]:
     """Computes a Local Reference Frame (LRF) for a vertex using the GFrames method.
 
@@ -272,9 +271,6 @@ def gframes_lrf(
             z-axis of the LRF. If False, computes the z-axis from face normals.
         scalar_field: Scalar values defined at each vertex of the mesh.
             Shape: (V,) where V is the number of vertices in the mesh.
-        triangle_selection_method: Method for selecting triangles in neighborhood.
-            Must be either 'all' (all vertices in triangle must be in neighborhood) or
-            'any' (at least one vertex in triangle must be in neighborhood).
 
     Returns:
         Axes of the LRF stored in columns [x-axis, y-axis, z-axis] forming a right-handed
@@ -303,17 +299,7 @@ def gframes_lrf(
         z_axis = np.mean(mesh.face_normals[vertex_faces], axis=0)
         z_axis = round_zeros(trimesh.transformations.unit_vector(z_axis))
 
-    neighbors = get_nearby_indices(mesh, vertex_index, radius)
-    if triangle_selection_method == "all":
-        triangle_mask = np.all(np.isin(mesh.faces, neighbors), axis=1)
-    elif triangle_selection_method == "any":
-        triangle_mask = np.any(np.isin(mesh.faces, neighbors), axis=1)
-    else:
-        raise ValueError(
-            f"Invalid triangle selection method {triangle_selection_method}: "
-            "it should be one of 'all' or 'any'"
-        )
-    triangle_indices = np.flatnonzero(triangle_mask)
+    triangle_indices = get_nearby_face_indices(mesh, vertex_index, radius)
     sqrt_e_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, 0]]
     e_coefficients = np.square(sqrt_e_coefficients)
     sqrt_g_coefficients = mesh.edges_unique_length[mesh.faces_unique_edges[triangle_indices, -1]]
@@ -360,7 +346,6 @@ def gframes_frames(
     *,
     use_vertex_normal: bool = False,
     scalar_field: npt.NDArray[np.float64],
-    triangle_selection_method: str = "any",
 ) -> npt.NDArray[np.float64]:
     """Computes Local Reference Frames (LRFs) for multiple vertices using the GFrames method.
 
@@ -375,9 +360,6 @@ def gframes_frames(
             z-axes of the LRFs. If False, computes z-axes from scatter matrix analysis.
         scalar_field: Scalar values defined at each vertex of the mesh.
             Shape: (V,) where V is the number of vertices in the mesh.
-        triangle_selection_method: Method for selecting triangles in neighborhood.
-            Must be either 'all' (all vertices in triangle must be in neighborhood) or
-            'any' (at least one vertex in triangle must be in neighborhood).
 
     Returns:
         Batch of axes of the LRFs stored in columns [x-axis, y-axis, z-axis] forming
@@ -395,22 +377,7 @@ def gframes_frames(
         z_axes = np.sum(face_normals[vertex_faces], axis=1)
         z_axes = round_zeros(trimesh.transformations.unit_vector(z_axes, axis=-1))
 
-    neighbors = get_nearby_indices(mesh, vertex_indices, radius)
-    if triangle_selection_method == "all":
-        local_triangle_indices = [
-            np.flatnonzero(np.all(np.isin(mesh.faces, vertex_neighbors), axis=-1))
-            for vertex_neighbors in neighbors
-        ]
-    elif triangle_selection_method == "any":
-        local_triangle_indices = [
-            np.flatnonzero(np.any(np.isin(mesh.faces, vertex_neighbors), axis=-1))
-            for vertex_neighbors in neighbors
-        ]
-    else:
-        raise ValueError(
-            f"Invalid triangle selection method {triangle_selection_method}: "
-            "it should be one of 'all' or 'any'"
-        )
+    local_triangle_indices = get_nearby_face_indices(mesh, vertex_indices, radius)
     triangles_counts = np.array(
         [len(triangle_indices) for triangle_indices in local_triangle_indices]
     )

@@ -183,6 +183,39 @@ def get_nearby_indices(
     return mesh_neighbors
 
 
+def get_nearby_face_indices(
+    mesh: trimesh.Trimesh,
+    vertex_indices: int | npt.NDArray[np.int_],
+    radius: float | npt.NDArray[np.float64],
+) -> npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]:
+    """Gets indices of faces within a specified radius of target vertices.
+
+    Args:
+        mesh: The input mesh.
+        vertex_index: Index or array of indices of target vertices.
+        radius: Maximum distance(s) from target vertices. Can be a single float or an array
+            matching vertex_index length.
+        exclude_self: Whether to exclude the target vertices from the results.
+
+    Returns:
+        If vertex_index is an int: Array of face indices within radius of the target vertex.
+        If vertex_index is an array: List of arrays containing face indices within radius
+            of each target vertex.
+    """
+    center_vertices = mesh.vertices[vertex_indices]
+    neighbors = mesh.kdtree.query_ball_point(center_vertices, radius, workers=-1)
+    face_indices: npt.NDArray[np.int64] | list[npt.NDArray[np.int64]]
+    if center_vertices.ndim == 1:
+        face_indices = np.flatnonzero(np.any(np.isin(mesh.faces, neighbors), axis=-1))
+    else:
+        assert not isinstance(vertex_indices, int)
+        face_indices = [
+            np.flatnonzero(np.any(np.isin(mesh.faces, vertex_neighbors), axis=-1))
+            for vertex_neighbors in neighbors
+        ]
+    return face_indices
+
+
 def get_connected_nearby_indices(
     mesh: trimesh.Trimesh,
     vertex_indices: int | npt.NDArray[np.int_],

@@ -15,12 +15,7 @@ def test_gframes_lrf(lrf_input: str, request: pytest.FixtureRequest) -> None:
         assert np.isclose(np.linalg.det(axes), 1.0)
 
         axes_with_normal = framesh.gframes.gframes_lrf(
-            mesh,
-            vertex_index,
-            radius=1.5,
-            use_vertex_normal=True,
-            scalar_field=field,
-            triangle_selection_method="all",
+            mesh, vertex_index, radius=1.5, use_vertex_normal=True, scalar_field=field
         )
         assert np.allclose(np.dot(axes_with_normal.T, axes_with_normal), np.eye(3))
         assert np.isclose(np.linalg.det(axes_with_normal), 1.0)
