@@ -69,7 +69,11 @@ def shot_lrf(
         axes[:, 0] *= -1
 
     if use_vertex_normal:
-        axes[:, 2] = round_zeros(mesh.vertex_normals[vertex_index])
+        z_axis = round_zeros(mesh.vertex_normals[vertex_index])
+        invalid_cross = np.allclose(np.cross(z_axis, axes[:, 0]), 0)
+        if invalid_cross:
+            axes = np.roll(axes, -1, axis=-1)
+        axes[:, 2] = z_axis
         axes[:, 1] = trimesh.transformations.unit_vector(np.cross(axes[:, 2], axes[:, 0]))
         axes[:, 0] = np.cross(axes[:, 1], axes[:, 2])
     else:
@@ -144,7 +148,10 @@ def shot_frames(
     x_sign = np.add.reduceat(x_sign_votes, reduce_indices) < 0
     valid_axes[x_sign, :, 0] *= -1
     if use_vertex_normal:
-        valid_axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
+        z_axes = round_zeros(mesh.vertex_normals[vertex_indices])
+        invalid_cross_mask = np.isclose(np.cross(z_axes, valid_axes[..., 0]), 0).all(axis=1)
+        valid_axes[invalid_cross_mask] = np.roll(valid_axes[invalid_cross_mask], -1, axis=-1)
+        valid_axes[..., 2] = z_axes
         valid_axes[..., 1] = trimesh.transformations.unit_vector(
             np.cross(valid_axes[..., 2], valid_axes[..., 0]), axis=-1
         )
