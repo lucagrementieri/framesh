@@ -245,18 +245,26 @@ def get_connected_nearby_indices(
     neighbors = mesh.kdtree.query_ball_point(center_vertices, radius, workers=-1)
     connected_indices = []
     for vertex_index, vertex_neighbors in zip(np_vertex_indices, neighbors, strict=True):
+        if len(vertex_neighbors) == 1:
+            connected_indices.append(
+                np.empty(0, dtype=np.int64) if exclude_self else np.array([vertex_index])
+            )
+            continue
         neighborhood_edges = mesh.edges_unique[
             np.all(np.isin(mesh.edges_unique, vertex_neighbors), axis=1)
         ]
+        if np.all(neighborhood_edges != vertex_index):
+            connected_indices.append(
+                np.empty(0, dtype=np.int64) if exclude_self else np.array([vertex_index])
+            )
+            continue
         neighborhood_graph = nx.from_edgelist(neighborhood_edges)
-        connected_vertex_indices = np.array(
-            sorted(nx.node_connected_component(neighborhood_graph, int(vertex_index)))
+        connected_vertex_indices = nx.node_connected_component(
+            neighborhood_graph, int(vertex_index)
         )
         if exclude_self:
-            connected_vertex_indices = np.delete(
-                connected_vertex_indices, np.searchsorted(connected_vertex_indices, vertex_index)
-            )
-        connected_indices.append(connected_vertex_indices)
+            connected_vertex_indices.remove(int(vertex_index))
+        connected_indices.append(np.array(sorted(connected_vertex_indices)))
     if is_single_index:
         return connected_indices[0]
     return connected_indices
