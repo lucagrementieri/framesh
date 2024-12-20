@@ -3,10 +3,10 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
+import networkx as nx
 import numpy as np
 import numpy.typing as npt
 import trimesh
-import networkx as nx
 from scipy.spatial import KDTree
 
 DEFAULT_COLORS = np.eye(3)
