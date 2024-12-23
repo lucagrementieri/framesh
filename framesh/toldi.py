@@ -43,8 +43,14 @@ def toldi_lrf(
         Pattern Recognition, 65, 175-187.
     """
     vertex = mesh.vertices[vertex_index]
-    neighbor_indices = get_connected_nearby_indices(mesh, vertex_index, radius, exclude_self=True)
-    differences = mesh.vertices[neighbor_indices] - vertex
+    neighbors = get_connected_nearby_indices(mesh, vertex_index, radius, exclude_self=True)
+    assert isinstance(neighbors, np.ndarray)
+    if neighbors.size == 0:
+        invalid_axes = np.full((3, 3), np.nan)
+        if use_vertex_normal:
+            invalid_axes[:, 2] = round_zeros(mesh.vertex_normals[vertex_index])
+        return invalid_axes
+    differences = mesh.vertices[neighbors] - vertex
     distances = trimesh.util.row_norm(differences)
 
     if use_vertex_normal:
@@ -52,6 +58,9 @@ def toldi_lrf(
     else:
         z_radius = radius / 3.0
         z_neighbors = get_connected_nearby_indices(mesh, vertex_index, z_radius)
+        assert isinstance(z_neighbors, np.ndarray)
+        if z_neighbors.size < 2:
+            return np.full((3, 3), np.nan)
         z_vertices = mesh.vertices[z_neighbors]
         z_centroid = np.mean(z_vertices, axis=0)
         centroid_differences = z_vertices - z_centroid
@@ -99,6 +108,32 @@ def toldi_frames(
 
     neighbors = get_connected_nearby_indices(mesh, vertex_indices, radius, exclude_self=True)
     neighbors_counts = np.array([len(n) for n in neighbors])
+    axes = np.full((n_vertices, 3, 3), np.nan)
+    valid_neighborhoods = neighbors_counts > 0
+    if use_vertex_normal:
+        axes[..., 2] = round_zeros(mesh.vertex_normals[vertex_indices])
+    else:
+        z_radius = radius / 3.0
+        z_neighbors = get_connected_nearby_indices(
+            mesh, vertex_indices[valid_neighborhoods], z_radius
+        )
+        z_neighbors_counts = np.array([len(n) for n in z_neighbors])
+        valid_z_neighborhoods = z_neighbors_counts > 1
+        z_neighbors = [
+            n for n, valid in zip(z_neighbors, valid_z_neighborhoods, strict=True) if valid
+        ]
+        z_neighbors_counts = z_neighbors_counts[valid_z_neighborhoods]
+        valid_neighborhoods[valid_neighborhoods] = valid_neighborhoods
+
+    if not np.any(valid_neighborhoods):
+        return axes
+
+    vertex_indices = vertex_indices[valid_neighborhoods]
+    frame_vertices = frame_vertices[valid_neighborhoods]
+    n_vertices = len(vertex_indices)
+    neighbors = [n for n, valid in zip(neighbors, valid_neighborhoods, strict=True) if valid]
+    neighbors_counts = neighbors_counts[valid_neighborhoods]
+
     flat_neighbors = np.concatenate(neighbors)
     frame_indices = np.repeat(np.arange(n_vertices), neighbors_counts)
     differences = mesh.vertices[flat_neighbors] - frame_vertices[frame_indices]  # (M, 3)
@@ -107,11 +142,8 @@ def toldi_frames(
 
     # Compute z-axis
     if use_vertex_normal:
-        z_axes = round_zeros(mesh.vertex_normals[vertex_indices])
+        z_axes = axes[valid_neighborhoods, :, 2]
     else:
-        z_radius = radius / 3.0
-        z_neighbors = get_connected_nearby_indices(mesh, vertex_indices, z_radius)
-        z_neighbors_counts = np.array([len(n) for n in z_neighbors])
         flat_z_neighbors = np.concatenate(z_neighbors)
         z_frame_indices = np.repeat(np.arange(n_vertices), z_neighbors_counts)
         z_vertices = mesh.vertices[flat_z_neighbors]
@@ -139,5 +171,6 @@ def toldi_frames(
     y_axes = trimesh.transformations.unit_vector(np.cross(z_axes, x_axes), axis=-1)
     x_axes = np.cross(y_axes, z_axes)
 
-    axes: npt.NDArray[np.float64] = np.stack((x_axes, y_axes, z_axes), axis=-1)
+    valid_axes = np.stack((x_axes, y_axes, z_axes), axis=-1)
+    axes[valid_neighborhoods] = valid_axes
     return axes
