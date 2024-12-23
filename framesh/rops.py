@@ -79,7 +79,11 @@ def rops_lrf(
     if hx < 0:
         axes[:, 0] *= -1
     if use_vertex_normal:
-        axes[:, 2] = mesh.vertex_normals[vertex_index]
+        z_axis = round_zeros(mesh.vertex_normals[vertex_index])
+        invalid_cross = np.allclose(np.cross(z_axis, axes[:, 0]), 0)
+        if invalid_cross:
+            axes = np.roll(axes, -1, axis=-1)
+        axes[:, 2] = z_axis
         axes[:, 1] = trimesh.transformations.unit_vector(np.cross(axes[:, 2], axes[:, 0]))
         axes[:, 0] = np.cross(axes[:, 1], axes[:, 2])
     else:
@@ -171,7 +175,10 @@ def rops_frames(
     axes[x_sign, :, 0] *= -1
 
     if use_vertex_normal:
-        axes[..., 2] = mesh.vertex_normals[vertex_indices]
+        z_axes = round_zeros(mesh.vertex_normals[vertex_indices])
+        invalid_cross_mask = np.isclose(np.cross(z_axes, axes[..., 0]), 0).all(axis=1)
+        axes[invalid_cross_mask] = np.roll(axes[invalid_cross_mask], -1, axis=-1)
+        axes[..., 2] = z_axes
         axes[..., 1] = trimesh.transformations.unit_vector(
             np.cross(axes[..., 2], axes[..., 0]), axis=-1
         )
