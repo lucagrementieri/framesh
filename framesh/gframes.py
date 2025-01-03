@@ -100,8 +100,8 @@ def mass_diagonal_barycentric(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
         np.zeros_like(mesh.vertex_faces, dtype=np.float64),
         mesh.area_faces[mesh.vertex_faces],
     )
-    areas: npt.NDArray[np.float64] = np.sum(vertex_areas, axis=1)
-    return areas / 3.0
+    areas: npt.NDArray[np.float64] = np.sum(vertex_areas, axis=1) / 3.0
+    return areas
 
 
 def mass_diagonal_mixed_voronoi(mesh: trimesh.Trimesh) -> npt.NDArray[np.float64]:
