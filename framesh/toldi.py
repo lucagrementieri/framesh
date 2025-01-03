@@ -107,6 +107,7 @@ def toldi_frames(
     n_vertices = len(vertex_indices)
 
     neighbors = get_connected_nearby_indices(mesh, vertex_indices, radius, exclude_self=True)
+    assert isinstance(neighbors, list)
     neighbors_counts = np.array([len(n) for n in neighbors])
     axes = np.full((n_vertices, 3, 3), np.nan)
     valid_neighborhoods = neighbors_counts > 0
@@ -117,6 +118,7 @@ def toldi_frames(
         z_neighbors = get_connected_nearby_indices(
             mesh, vertex_indices[valid_neighborhoods], z_radius
         )
+        assert isinstance(z_neighbors, list)
         z_neighbors_counts = np.array([len(n) for n in z_neighbors])
         valid_z_neighborhoods = z_neighbors_counts > 1
         z_neighbors = [
